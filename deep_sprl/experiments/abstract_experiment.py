@@ -15,6 +15,9 @@ from stable_baselines3.common.vec_env import VecEnv, DummyVecEnv
 from stable_baselines3.ppo.policies import MlpPolicy as PPOMlpPolicy
 from stable_baselines3.sac.policies import MlpPolicy as SACMlpPolicy
 
+def set_seed(seed):
+    np.random.seed(seed)
+    torch.manual_seed(seed)
 
 class CurriculumType(Enum):
     GoalGAN = 1
@@ -26,8 +29,6 @@ class CurriculumType(Enum):
     ACL = 8
     PLR = 9
     VDS = 10
-    SelfPacedWithCEM = 11
-    DefaultWithCEM = 12
 
     def __str__(self):
         if self.goal_gan():
@@ -46,18 +47,11 @@ class CurriculumType(Enum):
             return "plr"
         elif self.vds():
             return "vds"
-        elif self.self_paced_with_cem():
-            return "self_paced_with_cem"
-        elif self.default_with_cem():
-            return "default_with_cem"
         else:
             return "random"
 
     def self_paced(self):
         return self.value == CurriculumType.SelfPaced.value
-
-    def self_paced_with_cem(self):
-        return self.value == CurriculumType.SelfPacedWithCEM.value
 
     def goal_gan(self):
         return self.value == CurriculumType.GoalGAN.value
@@ -67,9 +61,6 @@ class CurriculumType(Enum):
 
     def default(self):
         return self.value == CurriculumType.Default.value
-
-    def default_with_cem(self):
-        return self.value == CurriculumType.DefaultWithCEM.value
 
     def wasserstein(self):
         return self.value == CurriculumType.Wasserstein.value
@@ -94,12 +85,8 @@ class CurriculumType(Enum):
             return CurriculumType.ALPGMM
         elif string == str(CurriculumType.SelfPaced):
             return CurriculumType.SelfPaced
-        elif string == str(CurriculumType.SelfPacedWithCEM):
-            return CurriculumType.SelfPacedWithCEM
         elif string == str(CurriculumType.Default):
             return CurriculumType.Default
-        elif string == str(CurriculumType.DefaultWithCEM):
-            return CurriculumType.DefaultWithCEM
         elif string == str(CurriculumType.Random):
             return CurriculumType.Random
         elif string == str(CurriculumType.Wasserstein):
@@ -360,14 +347,11 @@ class ExperimentCallback:
 class AbstractExperiment(ABC):
     APPENDIX_KEYS = {"default": ["DISCOUNT_FACTOR", "STEPS_PER_ITER", "LAM"],
                      CurriculumType.SelfPaced: ["DELTA", "KL_EPS", "DIST_TYPE", "INIT_VAR"],
-                     CurriculumType.SelfPacedWithCEM: ["DELTA", "KL_EPS", "RALPH_IN", "RALPH",
-                                                       "RALPH_SCH", "DIST_TYPE", "INIT_VAR"],
                      CurriculumType.Wasserstein: ["DELTA", "METRIC_EPS"],
                      CurriculumType.GoalGAN: ["GG_NOISE_LEVEL", "GG_FIT_RATE", "GG_P_OLD"],
                      CurriculumType.ALPGMM: ["AG_P_RAND", "AG_FIT_RATE", "AG_MAX_SIZE"],
                      CurriculumType.Random: [],
                      CurriculumType.Default: [],
-                     CurriculumType.DefaultWithCEM: ["RALPH_IN", "RALPH", "RALPH_SCH", "DIST_TYPE"],
                      CurriculumType.ACL: ["ACL_EPS", "ACL_ETA"],
                      CurriculumType.PLR: ["PLR_REPLAY_RATE", "PLR_BETA", "PLR_RHO"],
                      CurriculumType.VDS: ["VDS_NQ", "VDS_LR", "VDS_EPOCHS", "VDS_BATCHES"]}
@@ -379,6 +363,7 @@ class AbstractExperiment(ABC):
         self.curriculum = CurriculumType.from_string(curriculum_name)
         self.learner = Learner.from_string(learner_name)
         self.seed = seed
+        set_seed(seed)
         self.view = view
         self.process_parameters()
 
@@ -400,6 +385,10 @@ class AbstractExperiment(ABC):
 
     @abstractmethod
     def evaluate_learner(self, path):
+        pass
+
+    @abstractmethod
+    def evaluate_training(self, path):
         pass
 
     def get_other_appendix(self):
@@ -469,8 +458,7 @@ class AbstractExperiment(ABC):
         sorted_iteration_dirs = np.array(iteration_dirs)[idxs].tolist()
 
         # First evaluate the KL-Divergences if Self-Paced learning was used
-        if (self.curriculum.self_paced() or self.curriculum.self_paced_with_cem()) and \
-                not os.path.exists(os.path.join(log_dir, "kl_divergences.pkl")):
+        if self.curriculum.self_paced() and not os.path.exists(os.path.join(log_dir, "kl_divergences.pkl")):
             kl_divergences = []
             teacher = self.create_self_paced_teacher()
             for iteration_dir in sorted_iteration_dirs:
@@ -487,12 +475,13 @@ class AbstractExperiment(ABC):
             1: "performance_hom",
         }
         for iteration_dir in sorted_iteration_dirs:
+            print(f"Evaluating {iteration_dir} (eval_type={eval_type})")
             iteration_log_dir = os.path.join(log_dir, iteration_dir)
             performance_log_dir = os.path.join(iteration_log_dir, f"{performance_files[eval_type]}.npy")
             eval_type_str = performance_files[eval_type][len("performance"):]
             if not os.path.exists(performance_log_dir):
             # if True:
-                disc_rewards, eval_contexts, context_p, successful_eps = self.evaluate_learner(
+                disc_rewards, eval_contexts, context_p, successful_eps, costs = self.evaluate_learner(
                     path=iteration_log_dir,
                     eval_type=eval_type_str,
                 )
@@ -504,6 +493,41 @@ class AbstractExperiment(ABC):
                 stats = np.concatenate((stats, disc_rewards.reshape(-1, 1)), axis=1)
                 stats = np.concatenate((stats, eval_contexts), axis=1)
                 stats = np.concatenate((stats, context_p.reshape(-1, 1)), axis=1)
-                stats = np.concatenate((stats, successful_eps), axis=1)
+                stats = np.concatenate((stats, successful_eps.reshape(-1, 1)), axis=1)
+                stats = np.concatenate((stats, costs.reshape(-1, 1)), axis=1)
                 np.save(performance_log_dir, stats)
 
+    def evaluate_training_performance(self, num_contexts=20):
+        log_dir = self.get_log_dir()
+
+        iteration_dirs = [d for d in os.listdir(log_dir) if d.startswith("iteration-")]
+        unsorted_iterations = np.array([int(d[len("iteration-"):]) for d in iteration_dirs])
+        idxs = np.argsort(unsorted_iterations)
+        sorted_iteration_dirs = np.array(iteration_dirs)[idxs].tolist()
+
+        if self.curriculum.self_paced():
+            for iteration_dir in sorted_iteration_dirs:
+                print(f"Evaluating wrt context distribution in {iteration_dir}")
+                iteration_log_dir = os.path.join(log_dir, iteration_dir)
+                teacher = self.create_self_paced_teacher()
+                teacher.load(iteration_log_dir)
+                training_contexts = np.array([teacher.sample() for _ in range(num_contexts)])
+                performance_log_dir = os.path.join(iteration_log_dir, "performance_training.npy")
+                if not os.path.exists(performance_log_dir):
+                    disc_rewards, successful_eps, costs = self.evaluate_training(
+                        path=iteration_log_dir,
+                        training_contexts=training_contexts,
+                    )
+                    context_p = teacher.context_dist.log_pdf_t(torch.from_numpy(training_contexts)).detach().numpy() 
+                    print(f"Evaluated: {np.mean(disc_rewards)}")
+                    disc_rewards = np.array(disc_rewards)
+                    stats = np.ones((num_contexts, 1))*int(iteration_dir[len("iteration")+1:])
+                    stats = np.concatenate((stats, disc_rewards.reshape(-1, 1)), axis=1)
+                    stats = np.concatenate((stats, training_contexts), axis=1)
+                    stats = np.concatenate((stats, context_p.reshape(-1, 1)), axis=1)
+                    stats = np.concatenate((stats, successful_eps.reshape(-1, 1)), axis=1)
+                    stats = np.concatenate((stats, costs.reshape(-1, 1)), axis=1)
+                    np.save(performance_log_dir, stats)
+
+        else:
+            raise NotImplementedError("Evaluation of training performance is only implemented for Self-Paced learning")

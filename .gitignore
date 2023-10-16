@@ -2,6 +2,7 @@
 __pycache__/
 .idea
 logs*/
+opt_errors*/
 figures*/
 eval_contexts*/
 run_*

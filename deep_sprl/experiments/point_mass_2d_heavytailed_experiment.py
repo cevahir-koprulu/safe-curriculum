@@ -22,7 +22,7 @@ from pyro.distributions import MultivariateStudentT
 from torch.distributions.kl import register_kl
 from scipy.special import gamma
 
-from deep_sprl.environments.contextual_point_mass import ContextualPointMass
+from deep_sprl.environments.point_mass.contextual_point_mass import ContextualPointMass
 
 def logsumexp(x):
     xmax = np.max(x)

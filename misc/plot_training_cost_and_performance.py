@@ -159,8 +159,8 @@ def main():
     base_log_dir = os.path.join(Path(os.getcwd()).parent, "logs")
     num_updates_per_iteration = 5
     seeds = [str(i) for i in range(1, 4)]
-    env = "safety_point_mass_2d_narrow"
-    figname_extra = "_KL_EPS=1.0_D30_training"
+    env = "safety_point_mass_2d_2_narrow"
+    figname_extra = "_KL_EPS=1.0_training"
 
     algorithms = {
         "safety_point_mass_2d_narrow": {
@@ -177,12 +177,65 @@ def main():
             #     "color": "magenta",
             # },
         },
+        "safety_point_mass_2d_2_narrow": {
+            "SPDL_d0": {
+                "algorithm": "self_paced",
+                "label": "SPDL_D=0",
+                "model": "ppo_DELTA=0.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
+                "color": "blue",
+            },
+            "SPDL_d10": {
+                "algorithm": "self_paced",
+                "label": "SPDL_D=10",
+                "model": "ppo_DELTA=10.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
+                "color": "cyan",
+            },
+            "SPDL_d20": {
+                "algorithm": "self_paced",
+                "label": "SPDL_D=20",
+                "model": "ppo_DELTA=20.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
+                "color": "olive",
+            },
+            "SPDL_d30": {
+                "algorithm": "self_paced",
+                "label": "SPDL_D=30",
+                "model": "ppo_DELTA=30.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
+                "color": "gold",
+            },
+            "SPDL_d40": {
+                "algorithm": "self_paced",
+                "label": "SPDL_D=40",
+                "model": "ppo_DELTA=40.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
+                "color": "brown",
+            },
+        },
     }
 
     settings = {
         "safety_point_mass_2d_narrow":{
             "num_iters": 1000,
             "steps_per_iter": 4000,
+            "fontsize": 16,
+            "figsize": (10, 10),
+            "bbox_to_anchor": (.5, 1.05),
+            "subplot_settings": {
+                0: {
+                    "ylabel": 'Ave. return',
+                    "ylim": [-10., 80.],
+                },
+                1: {
+                    "ylabel": 'Ave. cum. cost',
+                    "ylim": [-5.0, 90.],
+                },
+                2: {
+                    "ylabel": 'Ave. succ. rate',
+                    "ylim": [-0.1, 1.1],
+                },
+            },
+        },
+        "safety_point_mass_2d_2_narrow":{
+            "num_iters": 1000,
+            "steps_per_iter": 8000,
             "fontsize": 16,
             "figsize": (10, 10),
             "bbox_to_anchor": (.5, 1.05),

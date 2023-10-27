@@ -8,7 +8,7 @@ from deep_sprl.util.viewer import Viewer
 class ContextualSafetyPointMass(Env):
     ROOM_WIDTH = 8.
 
-    def __init__(self, context=np.array([0., 2., 2.])):
+    def __init__(self, context=np.array([0., 2., 2.]), cost_coeff=0.1):
         self.action_space = spaces.Box(np.array([-10., -10.]), np.array([10., 10.]))
         self.observation_space = spaces.Box(np.array([-self.ROOM_WIDTH/2, -np.inf, -4., -np.inf]),
                                             np.array([self.ROOM_WIDTH/2, np.inf, 4., np.inf]))
@@ -16,7 +16,7 @@ class ContextualSafetyPointMass(Env):
         self._goal_state = np.array([self.ROOM_WIDTH/2-0.5, 0., -3.5, 0.0])
         self.context = context
         self._dt = 0.01
-        self.cost_coeff = 0.1
+        self.cost_coeff = cost_coeff
         self.single_lava_pass_cost = 0.1
         self.timestep = 0
         self.lava_passes = []
@@ -52,12 +52,12 @@ class ContextualSafetyPointMass(Env):
         ###### EXAMPLE ########
         on_lava = False
         # Lava 1 (left)
-        if (new_state[2] < 3.0 and new_state[2] > 1.0) and (
-            new_state[0] > -self.ROOM_WIDTH/2 and new_state[0] < self.context[0]):
+        if (new_state[2] <= 3.0 and new_state[2] >= 1.0) and (
+            new_state[0] >= -self.ROOM_WIDTH/2 and new_state[0] <= self.context[0]):
             on_lava = True
         # Lava 2 (right)
-        if (new_state[2] > -3.0 and new_state[2] < -1.0) and (
-            new_state[0] < self.ROOM_WIDTH/2 and new_state[0] > self.context[1]):
+        if (new_state[2] >= -3.0 and new_state[2] <= -1.0) and (
+            new_state[0] <= self.ROOM_WIDTH/2 and new_state[0] >= self.context[1]):
             on_lava = True
         return new_state, on_lava
 

@@ -13,6 +13,12 @@ register(
 )
 
 register(
+    id='ContextualSafetyPointMass2D2-v1',
+    max_episode_steps=400,
+    entry_point='deep_sprl.environments.safety_point_mass.contextual_safety_point_mass_2d_2:ContextualSafetyPointMass2D2'
+)
+
+register(
     id='ContextualLunarLander-v1',
     max_episode_steps=1000,
     reward_threshold=200,

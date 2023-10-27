@@ -38,7 +38,8 @@ def load_policy(env, algo, policy_path, device='cpu'):
         policy = algo.load(policy_path, device=device)
         return lambda x: policy.predict(x, state=None, deterministic=True)[0]
     else:
-        raise ValueError(f"No policy found at path: {policy_path}")
+        return None
+        # raise ValueError(f"No policy found at path: {policy_path}")
     
 def load_eval_contexts(experiment_name):
     return np.load(os.path.join(Path(os.getcwd()).parent, "eval_contexts", f"{experiment_name}_eval_contexts.npy"))
@@ -58,7 +59,10 @@ def plot_trajectories(base_log_dir, policy_from_iteration, seeds, env_name, expe
 
     fig, axes = plt.subplots(1, len(seeds), figsize=figsize, constrained_layout=True)
     plt.suptitle(f"Context: ({context[0]},{context[1]}) || Iteration: {policy_from_iteration}")
-    axes = axes.flatten()
+    if len(seeds) == 1:
+        axes = [axes]
+    else:
+        axes = axes.flatten()
     for ax_i, ax in enumerate(axes):
         ax.set_xlim([0., 8.])
         ax.set_ylim([0., 8.])
@@ -85,6 +89,8 @@ def plot_trajectories(base_log_dir, policy_from_iteration, seeds, env_name, expe
                                        f"iteration-{policy_from_iteration}", "model.zip")
             print(policy_path)
             policy = load_policy(env, rl_algorithm, policy_path)
+            if policy is None:
+                continue
             env.set_context(context)
             obs, acts, rews, costs, succs = rollout_policy(policy, env)
             disc_return = np.sum(rews * np.power(discount_factor, np.arange(rews.shape[0])))
@@ -93,8 +99,8 @@ def plot_trajectories(base_log_dir, policy_from_iteration, seeds, env_name, expe
             axes[seed_i].plot(x+4.0, y+4.0, color=color, alpha=0.5, linewidth=3.0)
             axes[seed_i].quiver(x+4.0, y+4.0, v_x/(10*np.sqrt(v_x**2+v_y**2)), v_y/(10*np.sqrt(v_x**2+v_y**2)),
                                  color=color, alpha=0.5, width=0.01)
-            axes[seed_i].text(0.1, 0.1+1.0/len(algorithms)*algo_i,
-                              f"Return: {disc_return:.2f} || Cost: {disc_cost:.2f} || Succ: {np.any(succs)}",
+            axes[seed_i].text(0.1, 0.1+0.5*algo_i,
+                              f"Return: {disc_return:.2f} || Cost: {disc_cost:.2f}",# || Succ: {np.any(succs)}",
                               color=color)
 
     colors = []
@@ -109,7 +115,7 @@ def plot_trajectories(base_log_dir, policy_from_iteration, seeds, env_name, expe
     labels.reverse()
     lines = [Line2D([0], [0], color=colors[-i-1], linestyle=linestyles[i], marker=markers[i], linewidth=2.0)
              for i in range(num_alg)]
-    lgd = fig.legend(lines, labels, ncol=num_alg, loc="upper center", bbox_to_anchor=bbox_to_anchor,
+    lgd = fig.legend(lines, labels, ncol=min(num_alg,3), loc="upper center", bbox_to_anchor=bbox_to_anchor,
                      fontsize=fontsize, handlelength=1.0, labelspacing=0., handletextpad=0.5, columnspacing=1.0)
 
     figname = ""
@@ -130,12 +136,12 @@ def plot_trajectories(base_log_dir, policy_from_iteration, seeds, env_name, expe
 
 def main():
     base_log_dir = os.path.join(Path(os.getcwd()).parent, "logs")
-    policy_from_iteration = 120
+    policy_from_iteration = 60
     seeds = [str(i) for i in range(1, 4)]
     rl_algorithm = PPO
-    experiment_name = "safety_point_mass_2d_narrow"
-    env_name = "ContextualSafetyPointMass2D-v1"
-    figname_extra = "_KL_EPS=1.0_D30"
+    experiment_name = "safety_point_mass_2d_2_narrow"
+    env_name = "ContextualSafetyPointMass2D2-v1"
+    figname_extra = "_KL_EPS=1.0"
     discount_factor = 0.99
     
     algorithms = {
@@ -153,6 +159,44 @@ def main():
                 "color": "magenta",
             },
         },
+        "safety_point_mass_2d_2_narrow": {
+            "SPDL_d0": {
+                "algorithm": "self_paced",
+                "label": "SPDL_D=0",
+                "model": "ppo_DELTA=0.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
+                "color": "blue",
+            },
+            "SPDL_d10": {
+                "algorithm": "self_paced",
+                "label": "SPDL_D=10",
+                "model": "ppo_DELTA=10.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
+                "color": "cyan",
+            },
+            "SPDL_d20": {
+                "algorithm": "self_paced",
+                "label": "SPDL_D=20",
+                "model": "ppo_DELTA=20.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
+                "color": "olive",
+            },
+            "SPDL_d30": {
+                "algorithm": "self_paced",
+                "label": "SPDL_D=30",
+                "model": "ppo_DELTA=30.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
+                "color": "gold",
+            },
+            "SPDL_d40": {
+                "algorithm": "self_paced",
+                "label": "SPDL_D=40",
+                "model": "ppo_DELTA=40.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
+                "color": "brown",
+            },
+            "DEF": {
+                "algorithm": "default",
+                "label": "Default",
+                "model": "ppo",
+                "color": "magenta",
+            },
+        },
     }
 
     settings = {
@@ -160,6 +204,11 @@ def main():
             "fontsize": 10,
             "figsize": (13, 5),
             "bbox_to_anchor": (.1, 1.01),
+        },
+        "safety_point_mass_2d_2_narrow":{
+            "fontsize": 10,
+            "figsize": (13, 5),
+            "bbox_to_anchor": (.2, 1.01),
         },
     }
 

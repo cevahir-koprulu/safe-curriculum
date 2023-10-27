@@ -11,8 +11,9 @@ def main():
                         choices=["default", "random", "self_paced", "wasserstein", "alp_gmm",
                                  "goal_gan", "acl", "plr", "vds"])
     parser.add_argument("--learner", type=str, default="ppo", choices=["ppo", "sac"])
-    parser.add_argument("--env", type=str, default="safety_point_mass_2d",
-                        choices=["safety_point_mass_2d", "point_mass_2d", "point_mass_2d_heavytailed", "lunar_lander_2d_heavytailed"])
+    parser.add_argument("--env", type=str, default="safety_point_mass_2d_2",
+                        choices=["safety_point_mass_2d", "safety_point_mass_2d_2", "point_mass_2d", 
+                                 "point_mass_2d_heavytailed", "lunar_lander_2d_heavytailed"])
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--n_cores", type=int, default=1)
     parser.add_argument('--train', action='store_true')
@@ -44,6 +45,9 @@ def main():
     elif args.env == "safety_point_mass_2d":
         from deep_sprl.experiments import SafetyPointMass2DExperiment
         exp = SafetyPointMass2DExperiment(args.base_log_dir, args.type, args.learner, parameters, args.seed, args.device)
+    elif args.env == "safety_point_mass_2d_2":
+        from deep_sprl.experiments import SafetyPointMass2D2Experiment
+        exp = SafetyPointMass2D2Experiment(args.base_log_dir, args.type, args.learner, parameters, args.seed, args.device)
     else:
         raise RuntimeError("Unknown environment '%s'!" % args.env)
 

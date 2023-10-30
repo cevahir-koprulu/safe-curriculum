@@ -5,15 +5,14 @@ import torch
 
 
 def main():
-    parser = argparse.ArgumentParser("Self-Paced Learning experiment runner")
+    parser = argparse.ArgumentParser("Safe curriculum learning experiment runner")
     parser.add_argument("--base_log_dir", type=str, default="logs")
     parser.add_argument("--type", type=str, default="self_paced",
                         choices=["default", "random", "self_paced", "wasserstein", "alp_gmm",
                                  "goal_gan", "acl", "plr", "vds"])
     parser.add_argument("--learner", type=str, default="ppo", choices=["ppo", "sac"])
     parser.add_argument("--env", type=str, default="safety_point_mass_2d_2",
-                        choices=["safety_point_mass_2d", "safety_point_mass_2d_2", "point_mass_2d", 
-                                 "point_mass_2d_heavytailed", "lunar_lander_2d_heavytailed"])
+                        choices=["safety_point_mass_2d", "safety_point_mass_3d"])
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--n_cores", type=int, default=1)
     parser.add_argument('--train', action='store_true')

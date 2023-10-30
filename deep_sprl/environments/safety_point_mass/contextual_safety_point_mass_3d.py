@@ -12,8 +12,8 @@ from omnisafe.envs.core import CMDP, env_register
 from deep_sprl.util.viewer import Viewer
 
 @env_register
-class ContextualSafetyPointMass2D(CMDP):
-    _support_envs: ClassVar[list[str]] = ['ContextualSafetyPointMass2D-v0']
+class ContextualSafetyPointMass3D(CMDP):
+    _support_envs: ClassVar[list[str]] = ['ContextualSafetyPointMass3D-v0']
     metadata: ClassVar[dict[str, int]] = {'render_fps': 100}
     need_auto_reset_wrapper = True
     need_time_limit_wrapper = True
@@ -33,7 +33,7 @@ class ContextualSafetyPointMass2D(CMDP):
         self._state = None
         self._timestep = 0
         self._lava_passes = []
-        self._context = np.array([0.0, 2.0])
+        self._context = np.array([0.0, 2.0, 0.])
         self._viewer = Viewer(self.ROOM_WIDTH, 8, background=(255, 255, 255))
 
         self._dt = 0.01
@@ -155,3 +155,4 @@ class ContextualSafetyPointMass2D(CMDP):
     @context.setter
     def context(self, context):
         self._context = context
+        self._friction_param = context[-1]

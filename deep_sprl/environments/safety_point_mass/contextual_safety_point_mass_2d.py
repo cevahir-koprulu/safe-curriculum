@@ -15,8 +15,8 @@ from deep_sprl.util.viewer import Viewer
 class ContextualSafetyPointMass2D(CMDP):
     _support_envs: ClassVar[list[str]] = ['ContextualSafetyPointMass2D-v0']
     metadata: ClassVar[dict[str, int]] = {'render_fps': 100}
-    need_auto_reset_wrapper = True
-    need_time_limit_wrapper = True
+    need_auto_reset_wrapper = False
+    need_time_limit_wrapper = False
     _num_envs = 1
 
     ROOM_WIDTH = 8.
@@ -55,14 +55,16 @@ class ContextualSafetyPointMass2D(CMDP):
         return self._state, {}
 
     def _step_internal(self, state, action):
-        action = torch.clip(action, self.action_space.low, self.action_space.high)
+        action = torch.clip(action, 
+                            torch.as_tensor(self.action_space.low), 
+                            torch.as_tensor(self.action_space.high))
 
         state_der = torch.zeros(4)
         state_der[0::2] = state[1::2]
-        state_der[1::2] = 1.5 * action - self.friction_param * state[1::2] + torch.normal(0, 0.05, (2,))
+        state_der[1::2] = 1.5 * action - self._friction_param * state[1::2] + torch.normal(0, 0.05, (2,))
         new_state = torch.clip(state + self._dt * state_der, 
-                               self.observation_space.low,
-                               self.observation_space.high)
+                               torch.as_tensor(self.observation_space.low),
+                               torch.as_tensor(self.observation_space.high))
 
         ###### EXAMPLE ########
         # R 0 0 0 0 0 0 0 0 0 # 
@@ -147,6 +149,9 @@ class ContextualSafetyPointMass2D(CMDP):
 
     def sample_action(self):
         return torch.as_tensor(self._action_space.sample())
+
+    def close(self):
+        self._viewer.close()
 
     @property
     def context(self):

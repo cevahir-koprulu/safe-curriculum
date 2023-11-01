@@ -55,14 +55,16 @@ class ContextualSafetyPointMass3D(CMDP):
         return self._state, {}
 
     def _step_internal(self, state, action):
-        action = torch.clip(action, self.action_space.low, self.action_space.high)
+        action = torch.clip(action, 
+                            torch.as_tensor(self.action_space.low), 
+                            torch.as_tensor(self.action_space.high))
 
         state_der = torch.zeros(4)
         state_der[0::2] = state[1::2]
-        state_der[1::2] = 1.5 * action - self.friction_param * state[1::2] + torch.normal(0, 0.05, (2,))
+        state_der[1::2] = 1.5 * action - self._friction_param * state[1::2] + torch.normal(0, 0.05, (2,))
         new_state = torch.clip(state + self._dt * state_der, 
-                               self.observation_space.low,
-                               self.observation_space.high)
+                               torch.as_tensor(self.observation_space.low),
+                               torch.as_tensor(self.observation_space.high))
 
         ###### EXAMPLE ########
         # R 0 0 0 0 0 0 0 0 0 # 
@@ -148,6 +150,9 @@ class ContextualSafetyPointMass3D(CMDP):
     def sample_action(self):
         return torch.as_tensor(self._action_space.sample())
 
+    def close(self):
+        self._viewer.close()
+
     @property
     def context(self):
         return self._context
@@ -155,4 +160,4 @@ class ContextualSafetyPointMass3D(CMDP):
     @context.setter
     def context(self, context):
         self._context = context
-        self._friction_param = context[-1]
+        self._friction_param = context[2]

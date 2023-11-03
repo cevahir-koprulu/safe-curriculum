@@ -140,9 +140,6 @@ class SafetyPointMass2DExperiment(AbstractExperiment):
                     sac=dict(learning_rate=3e-4, buffer_size=10000, learning_starts=500, batch_size=64,
                              train_freq=5, target_entropy="auto"))
 
-    def create_cem_teacher(self):
-        pass
-
     def create_experiment(self):
         timesteps = self.NUM_ITER * self.STEPS_PER_ITER
 

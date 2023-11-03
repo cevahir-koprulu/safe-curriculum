@@ -1,10 +1,7 @@
-from typing import ClassVar
-
 import torch
 import numpy as np
 from deep_sprl.teachers.abstract_teacher import AbstractTeacher, BaseWrapper
 
-from omnisafe.envs.core import env_register
 
 class PLR(AbstractTeacher):
 
@@ -108,29 +105,10 @@ class PLR(AbstractTeacher):
         pass
 
 
-@env_register
 class PLRWrapper(BaseWrapper):
-    _support_envs: ClassVar[list[str]] = ['PLRWrapper-v0']
-    need_auto_reset_wrapper = True
-    need_time_limit_wrapper = True
-    _num_envs = 1
 
-    def __init__(self,
-                env_id: str,
-                env_id_actual: str,
-                teacher,
-                discount_factor,
-                context_visible=True,
-                reward_from_info=False,
-                context_post_processing=None,
-                episodes_per_update=50,
-                value_fn=None,
-                lam=None,
-                **kwargs):
-
-        super().__init__(env_id, env_id_actual, teacher, discount_factor, context_visible,
-                        reward_from_info, context_post_processing=teacher.post_process,
-                        episodes_per_update=episodes_per_update, **kwargs)
+    def __init__(self, env, plr, discount_factor, context_visible, value_fn=None, lam=None):
+        BaseWrapper.__init__(self, env, plr, discount_factor, context_visible, context_post_processing=plr.post_process)
         self.state_trace = []
         self.reward_trace = []
         self.step_count = 0
@@ -147,8 +125,8 @@ class PLRWrapper(BaseWrapper):
             self.processed_context = self.cur_context.copy()
         else:
             self.processed_context = self.context_post_processing(self.cur_context).copy()
-        self._env.context = self.processed_context.copy()
-        obs, info = self._env.reset()
+        self.env.unwrapped.context = self.processed_context.copy()
+        obs = self.env.reset()
 
         if self.context_visible:
             obs = np.concatenate((obs, self.processed_context))
@@ -156,18 +134,18 @@ class PLRWrapper(BaseWrapper):
         self.state_trace = [obs.copy()]
         self.reward_trace = []
         self.cur_initial_state = obs.copy()
-        return obs, info
+        return obs
 
     def step(self, action):
-        obs, reward, cost, terminated, truncated, info = self._env.step(action)
+        step = self.env.step(action)
         self.step_count += 1
         if self.context_visible:
-            obs = np.concatenate((obs, self.processed_context))
-        self.state_trace.append(obs.copy())
-        self.reward_trace.append(reward)
+            step = np.concatenate((step[0], self.processed_context)), step[1], step[2], step[3]
+        self.state_trace.append(step[0].copy())
+        self.reward_trace.append(step[1])
 
         # In this case PLR trains its own value function (if e.g. using a different algorithm than PPO)
-        if (terminated or truncated) and self.value_fn is not None:
+        if step[2] and self.value_fn is not None:
             values = self.value_fn(np.array(self.state_trace))
             advantages = np.zeros((values.shape[0] - 1, 1))
             last_gae_lam = 0
@@ -183,11 +161,10 @@ class PLRWrapper(BaseWrapper):
                 self.train_state_buffer.clear()
                 self.train_value_buffer.clear()
 
-        self.update((obs, reward, cost, terminated, truncated, info))
-        return (obs, reward, cost, terminated, truncated, info)
+        self.update(step)
+        return step
 
-    def done_callback(self, step, cur_initial_state, cur_context, discounted_reward, undiscounted_reward,
-                      discounted_cost, undiscounted_cost):
+    def done_callback(self, step, cur_initial_state, cur_context, discounted_reward, undiscounted_reward):
         # We currently rely on the learner being set on the environment after its creation
         if self.value_fn is None:
             estimated_values = self.learner.estimate_value_internal(np.array(self.state_trace))

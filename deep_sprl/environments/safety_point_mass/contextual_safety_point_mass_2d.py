@@ -15,8 +15,8 @@ from deep_sprl.util.viewer import Viewer
 class ContextualSafetyPointMass2D(CMDP):
     _support_envs: ClassVar[list[str]] = ['ContextualSafetyPointMass2D-v0']
     metadata: ClassVar[dict[str, int]] = {'render_fps': 100}
-    need_auto_reset_wrapper = False
-    need_time_limit_wrapper = False
+    need_auto_reset_wrapper = True
+    need_time_limit_wrapper = True
     _num_envs = 1
 
     ROOM_WIDTH = 8.
@@ -26,7 +26,7 @@ class ContextualSafetyPointMass2D(CMDP):
                  env_id: str,
                  **kwargs,
                  ):
-        
+        super().__init__(env_id)
         self._action_space = spaces.Box(low=-10., high=10., shape=(2,))
         self._observation_space = spaces.Box(low=np.array([-self.ROOM_WIDTH/2, -np.inf, -4., -np.inf]),
                                              high=np.array([self.ROOM_WIDTH/2, np.inf, 4., np.inf]))
@@ -89,7 +89,6 @@ class ContextualSafetyPointMass2D(CMDP):
 
     def step(self, action):
         self._timestep += 1
-
         new_state = self._state
         num_lava_passes = 0
         for i in range(0, 10):
@@ -100,14 +99,17 @@ class ContextualSafetyPointMass2D(CMDP):
             self._lava_passes.append([self._timestep, num_lava_passes])
 
         self._state = new_state
-        cost = num_lava_passes * self._single_lava_pass_cost
+        cost = torch.as_tensor(num_lava_passes * self._single_lava_pass_cost)
         r_coeff = 0.6
-        reward = np.exp(-r_coeff * np.linalg.norm(self.goal_state[0::2] - new_state[0::2]))
-        info = {"success": np.linalg.norm(self.goal_state[0::2] - new_state[0::2]) < 0.25,
-                "cost": cost,
-                "final_observations": new_state}
-        terminated = False
-        truncated = self._timestep >= self.MAX_TIME_STEPS
+        reward = torch.as_tensor(np.exp(-r_coeff * 
+                                        np.linalg.norm(self.goal_state[0::2] - 
+                                                       new_state[0::2])))
+        info = {"success": torch.as_tensor(np.linalg.norm(self.goal_state[0::2] - 
+                                                          new_state[0::2]) < 0.25),
+                "cost": cost}
+        terminated = truncated = torch.as_tensor(self._timestep >= self.MAX_TIME_STEPS)
+        if truncated:
+            info["final_observation"] = new_state
         return new_state, reward, cost, terminated, truncated, info
 
     def render(self):

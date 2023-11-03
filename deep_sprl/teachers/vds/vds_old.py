@@ -1,12 +1,9 @@
-from typing import ClassVar
-
 import math
 import torch
 import numpy as np
 from deep_sprl.teachers.vds.replay_buffer import ReplayBuffer
 from deep_sprl.teachers.abstract_teacher import AbstractTeacher, BaseWrapper
 
-from omnisafe.envs.core import env_register
 
 class VDS(AbstractTeacher):
 
@@ -177,25 +174,12 @@ class EnsembleLinear(torch.nn.Module):
             self.in_features, self.out_features, self.k, self.bias is not None
         )
 
-@env_register
-class VDSWrapper(BaseWrapper):
-    _support_envs: ClassVar[list[str]] = ['VDSWrapper-v0']
-    need_auto_reset_wrapper = True
-    need_time_limit_wrapper = True
-    _num_envs = 1
 
-    def __init__(self,
-                 env_id: str,
-                 env_id_actual: str,
-                 teacher, 
-                 discount_factor, 
-                 context_visible=True,
-                 reward_from_info=False,
-                 context_post_processing=None, 
-                 episodes_per_update=50,
-                 **kwargs):
-        super().__init__(self, env_id, env_id_actual, teacher, discount_factor, context_visible,
-                            reward_from_info, context_post_processing, episodes_per_update, **kwargs)
+class VDSWrapper(BaseWrapper):
+
+    def __init__(self, env, vds, discount_factor, context_visible, context_post_processing=None):
+        BaseWrapper.__init__(self, env, vds, discount_factor, context_visible,
+                             context_post_processing=context_post_processing)
         self.last_obs = None
         self.step_count = 0
 
@@ -206,26 +190,25 @@ class VDSWrapper(BaseWrapper):
         else:
             self.processed_context = self.context_post_processing(self.cur_context).copy()
         self.env.unwrapped.context = self.processed_context.copy()
-        obs, info = self.env.reset()
+        obs = self.env.reset()
 
         if self.context_visible:
             obs = np.concatenate((obs, self.processed_context))
 
         self.last_obs = obs.copy()
         self.cur_initial_state = obs.copy()
-        return obs, info
+        return obs
 
     def step(self, action):
-        obs, reward, cost, terminated, truncated, info = self._env.step(action)
+        step = self.env.step(action)
         if self.context_visible:
-            obs = np.concatenate((step[0], self.processed_context))
-        self.teacher.replay_buffer.add(self.last_obs, obs.copy(), action, reward, terminated or truncated, [])
-        self.last_obs = obs.copy()
+            step = np.concatenate((step[0], self.processed_context)), step[1], step[2], step[3]
+        self.teacher.replay_buffer.add(self.last_obs, step[0].copy(), action, step[1], step[2], [])
+        self.last_obs = step[0].copy()
         self.step_count += 1
-        self.update((obs, reward, cost, terminated, truncated, info))
-        return (obs, reward, cost, terminated, truncated, info)
+        self.update(step)
+        return step
 
-    def done_callback(self, step, cur_initial_state, cur_context, discounted_reward, undiscounted_reward,
-                      discounted_cost, undiscounted_cost):
+    def done_callback(self, step, cur_initial_state, cur_context, discounted_reward, undiscounted_reward):
         # We currently rely on the learner being set on the environment after its creation
         self.teacher.update(self.step_count)

@@ -53,7 +53,7 @@ class SafetyPointMass2DExperiment(AbstractExperiment):
     STD_LOWER_BOUND = np.array([0.1, 0.1])
     KL_THRESHOLD = 8000.
     KL_EPS = 0.5
-    DELTA = 40.0 # 0.0
+    DELTA = 40.0
     METRIC_EPS = 0.5
     EP_PER_UPDATE = 100 # 10
 
@@ -134,7 +134,7 @@ class SafetyPointMass2DExperiment(AbstractExperiment):
             teacher_id = "VDS"
         elif self.curriculum.random():
             teacher = UniformSampler(self.LOWER_CONTEXT_BOUNDS.copy(), self.UPPER_CONTEXT_BOUNDS.copy())
-            teacher_id = "BaseTeacherWrapper-v0"
+            teacher_id = "DummyTeacher"
         else:
             raise RuntimeError("Invalid learning type")
 

@@ -4,9 +4,6 @@ import os
 import math
 import numpy as np
 from deep_sprl.experiments.safety_point_mass_2d_experiment import SafetyPointMass2DExperiment
-from deep_sprl.experiments.point_mass_2d_experiment import PointMass2DExperiment
-from deep_sprl.experiments.point_mass_2d_heavytailed_experiment import PointMass2DHeavyTailedExperiment
-from deep_sprl.experiments.lunar_lander_2d_heavytailed_experiment import LunarLander2DHeavyTailedExperiment
 from pathlib import Path
 
 
@@ -44,20 +41,10 @@ def main():
     if not os.path.exists(eval_context_dir):
         os.makedirs(eval_context_dir)
 
-    if env[:-len(target_type)-1] == "point_mass_2d":
-        exp = PointMass2DExperiment(base_log_dir="logs", curriculum_name="self_paced", learner_name="ppo",
-                                    parameters={"TARGET_TYPE": target_type}, seed=1, device="cpu")
-    elif env[:-len(target_type) - 1] == "point_mass_2d_heavytailed":
-        exp = PointMass2DHeavyTailedExperiment(base_log_dir="logs", curriculum_name="self_paced", learner_name="ppo",
-                                               parameters={"TARGET_TYPE": target_type}, seed=1, device="cpu")
-    elif env[:-len(target_type) - 1] == "safety_point_mass_2d":
+    if env[:-len(target_type) - 1] == "safety_point_mass_2d":
         exp = SafetyPointMass2DExperiment(base_log_dir="logs", curriculum_name="self_paced", 
-                                          learner_name="ppo", parameters={"TARGET_TYPE": target_type},
+                                          learner_name="PPO", parameters={"TARGET_TYPE": target_type},
                                           seed=1, device="cpu")
-    elif env[:-len(target_type) - 1] == "lunar_lander_2d_heavytailed":
-        exp = LunarLander2DHeavyTailedExperiment(base_log_dir="logs", curriculum_name="self_paced",
-                                                   learner_name="ppo", parameters={"TARGET_TYPE": target_type},
-                                                   seed=1, device="cpu")
     else:
         raise ValueError("Invalid environment")
 

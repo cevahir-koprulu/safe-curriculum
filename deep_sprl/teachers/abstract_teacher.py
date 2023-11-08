@@ -67,6 +67,8 @@ class BaseWrapper(CMDP):
         self.stats_buffer = Buffer(5, 10000, True)
         self.context_trace_buffer = Buffer(5, 10000, True)
 
+        self.algorithm_iteration = 0
+        self.iteration = 0
         self.episodes_counter = 0
         self.undiscounted_reward = 0.
         self.discounted_reward = 0.
@@ -78,11 +80,8 @@ class BaseWrapper(CMDP):
         self.cur_context = None
         self.processed_context = None
         self.cur_initial_state = None
-        self.init_step_callback()
 
     def init_step_callback(self):
-        self.algorithm_iteration = 0
-        self.iteration = 0
         self.last_time = None
         self.format = "   %4d    | %.1E |   %3d    |  %.2E  |  %.2E  |  %.2E  |  %.2E  "
         if self.teacher is not None:
@@ -104,6 +103,9 @@ class BaseWrapper(CMDP):
         pass
 
     def step_callback(self):
+        if self.algorithm_iteration == 0:
+            self.init_step_callback()
+
         if self.algorithm_iteration % self.step_divider == 0:
             data_tpl = (self.iteration,)
 
@@ -139,7 +141,7 @@ class BaseWrapper(CMDP):
 
     def step(self, action):
         obs, reward, cost, terminated, truncated, info = self._env.step(action)
-        obs = torch.cat((obs, torch.as_tensor(self.processed_context)))
+        obs = torch.cat((obs, torch.as_tensor(self.processed_context))).float()
         self.update((obs, reward, cost, terminated, truncated, info))
         self.step_callback()
         return obs, reward, cost, terminated, truncated, info
@@ -156,7 +158,7 @@ class BaseWrapper(CMDP):
             self.processed_context = self.context_post_processing(self.cur_context.copy())
         self._env.context = self.processed_context.copy()
         obs, info = self._env.reset(seed=seed, options=options)
-        obs = torch.cat((obs, torch.as_tensor(self.processed_context)))
+        obs = torch.cat((obs, torch.as_tensor(self.processed_context))).float()
 
         self.cur_initial_state = obs.detach().clone()
         return obs, info

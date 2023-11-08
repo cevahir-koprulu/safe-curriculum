@@ -4,15 +4,15 @@ import gymnasium
 import numpy as np
 from omnisafe.envs.core import make
 from deep_sprl.experiments.abstract_experiment import AbstractExperiment, Learner
-from deep_sprl.teachers.alp_gmm import ALPGMM#, ALPGMMWrapper
-from deep_sprl.teachers.goal_gan import GoalGAN#, GoalGANWrapper
-from deep_sprl.teachers.spl import SelfPacedTeacherV2#, SelfPacedWrapper, CurrOT
+from deep_sprl.teachers.alp_gmm import ALPGMM, ALPGMMWrapper
+from deep_sprl.teachers.goal_gan import GoalGAN, GoalGANWrapper
+from deep_sprl.teachers.spl import SelfPacedTeacherV2, SelfPacedWrapper#, CurrOT
 from deep_sprl.teachers.dummy_teachers import UniformSampler, DistributionSampler
-# from deep_sprl.teachers.dummy_wrapper import DummyWrapper
-# from deep_sprl.teachers.abstract_teacher import BaseWrapper
-from deep_sprl.teachers.acl import ACL#, ACLWrapper
-from deep_sprl.teachers.plr import PLR#, PLRWrapper
-from deep_sprl.teachers.vds import VDS#, VDSWrapper
+from deep_sprl.teachers.dummy_wrapper import DummyWrapper
+from deep_sprl.teachers.abstract_teacher import BaseWrapper
+from deep_sprl.teachers.acl import ACL, ACLWrapper
+from deep_sprl.teachers.plr import PLR, PLRWrapper
+from deep_sprl.teachers.vds import VDS, VDSWrapper
 from deep_sprl.teachers.util import Subsampler
 from deep_sprl.util.utils import update_params
 from scipy.stats import multivariate_normal
@@ -149,6 +149,9 @@ class SafetyPointMass2DExperiment(AbstractExperiment):
     def create_learner_params(self):
         algo_specific_cfgs = {
             Learner.SAC: {
+                'train_cfgs': {
+                    'eval_episodes': 0,
+                },
                 'algo_cfgs': {
                     'steps_per_epoch': self.STEPS_PER_ITER, # to eval, log, actor scheduler step
                     'update_cycles': 5, # train_freq                      
@@ -195,7 +198,7 @@ class SafetyPointMass2DExperiment(AbstractExperiment):
                     'use_max_grad_norm': True,
                     'max_grad_norm': 0.5,
                     'use_critic_norm': True,
-                    'critic_norm_coeff': 0.5, # 0.001,
+                    'critic_norm_coef': 0.5, # 0.001,
                     'gamma': self.DISCOUNT_FACTOR,
                     'cost_gamma': self.DISCOUNT_FACTOR,
                     'lam': self.LAM,
@@ -260,11 +263,10 @@ class SafetyPointMass2DExperiment(AbstractExperiment):
             'seed': self.seed,
             'train_cfgs': {
                 'device': self.device,
-                'torch_threads': 4,
+                'torch_threads': 16,
                 'vector_env_nums': 1,
                 'parallel': 1,
                 'total_steps': self.NUM_ITER * self.STEPS_PER_ITER,
-                'eval_episodes': 0,
             },
             'logger_cfgs': {
                 'use_wandb': False,
@@ -274,7 +276,7 @@ class SafetyPointMass2DExperiment(AbstractExperiment):
                 'log_dir': self.get_log_dir(),
             },
             'model_cfgs':  {
-                'weight_initilization_mode': "kaiming_unitorm",
+                'weight_initialization_mode': "kaiming_uniform",
                 'linear_lr_decay': True,
                 'actor': {
                     'hidden_sizes': [128, 128, 128],
@@ -293,9 +295,9 @@ class SafetyPointMass2DExperiment(AbstractExperiment):
 
     def create_experiment(self):
         env_id, teacher_id, wrapper_kwargs = self.create_environment(evaluation=False)
-        custom_cfg = self.create_learner_params()
+        custom_cfgs = self.create_learner_params()
         model, interface = self.learner.create_learner(env_id=f"{teacher_id}-{env_id}", 
-                                                       custom_cfg=custom_cfg,
+                                                       custom_cfgs=custom_cfgs,
                                                        wrapper_kwargs=wrapper_kwargs)
         omnisafe_log_dir = model.agent.logger.log_dir
 
@@ -335,7 +337,7 @@ class SafetyPointMass2DExperiment(AbstractExperiment):
         model = self.learner.load_for_evaluation(model_path=model_path, 
                                                  obs_space=self.eval_env._observation_space,
                                                  act_space=self.eval_env._action_space, 
-                                                 custom_cfg=self.create_learner_params(), 
+                                                 custom_cfgs=self.create_learner_params(), 
                                                  device=self.device)
         eval_path = f"{os.getcwd()}/eval_contexts/{self.get_env_name()}_eval{eval_type}_contexts.npy"
         if os.path.exists(eval_path):
@@ -386,7 +388,7 @@ class SafetyPointMass2DExperiment(AbstractExperiment):
         model = self.learner.load_for_evaluation(model_path=model_path, 
                                                  obs_space=self.eval_env._observation_space,
                                                  act_space=self.eval_env._action_space, 
-                                                 custom_cfg=self.create_learner_params(), 
+                                                 custom_cfgs=self.create_learner_params(), 
                                                  device=self.device)
         num_contexts = training_contexts.shape[0]
         num_succ_eps_per_c = np.zeros(num_contexts)

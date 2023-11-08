@@ -47,7 +47,6 @@ class ContextualSafetyPointMass2D(CMDP):
 
         self.goal_state = torch.as_tensor([self.ROOM_WIDTH/2-0.5, 0., -3.5, 0.0])
 
-
     def reset(
             self, 
             seed: int = None,

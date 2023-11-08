@@ -86,7 +86,7 @@ class BaseWrapper(CMDP):
         self.last_time = None
         self.format = "   %4d    | %.1E |   %3d    |  %.2E  |  %.2E  |  %.2E  |  %.2E  "
         if self.teacher is not None:
-            if str(self.teacher)=="selfpaced":
+            if str(self.teacher)=="self_paced":
                 context_dim = self.teacher.context_dim
                 text = "| [%.2E"
                 for i in range(0, context_dim - 1):
@@ -95,7 +95,7 @@ class BaseWrapper(CMDP):
                 self.format += text + text
         header = " Iteration |  Time   | Ep. Len. | Mean Reward | Mean Disc. Reward | Mean Cost | Mean Disc. Cost "
         if self.teacher is not None:
-            if str(self.teacher)=="selfpaced":
+            if str(self.teacher)=="self_paced":
                 header += "|     Context mean     |      Context std     "
         print(header)
 
@@ -116,7 +116,7 @@ class BaseWrapper(CMDP):
             mean_rew, mean_disc_rew, mean_cost, mean_disc_cost, mean_length = self.get_statistics()
             data_tpl += (int(mean_length), mean_rew, mean_disc_rew, mean_cost, mean_disc_cost)
 
-            if str(self.teacher)=="selfpaced":
+            if str(self.teacher)=="self_paced":
                 context_mean = self.teacher.context_dist.mean()
                 context_std = np.sqrt(np.diag(self.teacher.context_dist.covariance_matrix()))
                 data_tpl += tuple(context_mean.tolist())
@@ -139,7 +139,7 @@ class BaseWrapper(CMDP):
 
     def step(self, action):
         obs, reward, cost, terminated, truncated, info = self._env.step(action)
-        obs = torch.cat((obs, self.processed_context))
+        obs = torch.cat((obs, torch.as_tensor(self.processed_context)))
         self.update((obs, reward, cost, terminated, truncated, info))
         self.step_callback()
         return obs, reward, cost, terminated, truncated, info
@@ -156,9 +156,9 @@ class BaseWrapper(CMDP):
             self.processed_context = self.context_post_processing(self.cur_context.copy())
         self._env.context = self.processed_context.copy()
         obs, info = self._env.reset(seed=seed, options=options)
-        obs = torch.cat((obs, self.processed_context))
+        obs = torch.cat((obs, torch.as_tensor(self.processed_context)))
 
-        self.cur_initial_state = obs.copy()
+        self.cur_initial_state = obs.detach().clone()
         return obs, info
 
     def set_context(self, context):
@@ -177,7 +177,7 @@ class BaseWrapper(CMDP):
         self.step_length += 1.
 
         if terminated or truncated:
-            self.done_callback(step, self.cur_initial_state.copy(), self.cur_context, 
+            self.done_callback(step, self.cur_initial_state.detach().clone(), self.cur_context, 
                                self.discounted_reward, self.undiscounted_reward,
                                self.discounted_cost, self.undiscounted_cost)
             self.stats_buffer.update_buffer((self.undiscounted_reward, self.discounted_reward, 
@@ -200,7 +200,7 @@ class BaseWrapper(CMDP):
 
     def get_statistics(self):
         if len(self.stats_buffer) == 0:
-            return 0., 0., 0
+            return 0., 0., 0., 0., 0
         else:
             rewards, disc_rewards, costs, disc_costs, steps = self.stats_buffer.read_buffer()
             mean_reward = np.mean(rewards)

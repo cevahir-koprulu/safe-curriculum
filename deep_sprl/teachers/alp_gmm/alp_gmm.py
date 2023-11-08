@@ -86,7 +86,7 @@ class ALPGMM(AbstractTeacher):
         self.bk = {'weights': [], 'covariances': [], 'means': [], 'tasks_alps': [], 'episodes': []}
 
     def __str__(self) -> str:
-        return "alpgmm"
+        return "alp_gmm"
 
     def init_gmm(self, nb_gaussians):
         return GMM(n_components=nb_gaussians, covariance_type='full', random_state=self.seed,

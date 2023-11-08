@@ -28,6 +28,9 @@ class CurrOT(AbstractTeacher):
         self.fail_return_buffer = []
         self.sampler = UniformSampler(self.context_bounds)
 
+    def __str__(self) -> str:
+        return "wasserstein"
+
     def on_rollout_end(self, context, ret):
         self.sampler.update(context, ret)
 

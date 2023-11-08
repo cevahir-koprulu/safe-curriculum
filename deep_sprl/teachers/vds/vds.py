@@ -48,7 +48,6 @@ class VDS(AbstractTeacher):
     def __str__(self) -> str:
         return "vds"
 
-
     def initialize_teacher(self, obs_shape, action_dim, learner, state_provider):
         self.replay_buffer = ReplayBuffer(self.q_train_config["replay_size"], obs_shape, action_dim, device=self.device,
                                           handle_timeout_termination=False)

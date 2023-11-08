@@ -10,8 +10,8 @@ def main():
     parser.add_argument("--type", type=str, default="self_paced",
                         choices=["default", "random", "self_paced", "wasserstein", "alp_gmm",
                                  "goal_gan", "acl", "plr", "vds"])
-    parser.add_argument("--learner", type=str, default="ppo", choices=["PPO", "SAC", "PPOLag"])
-    parser.add_argument("--env", type=str, default="safety_point_mass_2",
+    parser.add_argument("--learner", type=str, default="PPO", choices=["PPO", "SAC", "PPOLag"])
+    parser.add_argument("--env", type=str, default="safety_point_mass_2d",
                         choices=["safety_point_mass_2d"])
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--n_cores", type=int, default=1)
@@ -20,7 +20,7 @@ def main():
     parser.add_argument("--eval_type", type=int, default=0, choices=[0, 1],
                         help="0: target distribution, 1: all contexts")
     parser.add_argument('--eval_training', action='store_true')
-    parser.add_argument("--device", type=str, default="cuda")
+    parser.add_argument("--device", type=str, default="cuda:0")
 
     args, remainder = parser.parse_known_args()
     parameters = parse_parameters(remainder)

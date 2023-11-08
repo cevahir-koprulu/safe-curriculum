@@ -23,6 +23,9 @@ class DistributionSampler(AbstractTeacher):
         diffs = (samples - self.mu[None, :]) / np.sqrt(samples.shape[0])
         self.cov = np.einsum("ni,nj->ij", diffs, diffs)
 
+    def __str__(self) -> str:
+        return "distribution_sampler"
+
     def sample(self):
         ok = False
         while not ok:
@@ -48,6 +51,9 @@ class DiscreteSampler(AbstractTeacher):
     def __init__(self, log_likelihoods):
         self.likelihoods = np.exp(log_likelihoods)
 
+    def __str__(self) -> str:
+        return "discrete_sampler"
+
     def sample(self):
         return np.argmax(np.random.uniform(0., 1.) <= np.cumsum(self.likelihoods))
 
@@ -63,6 +69,9 @@ class UniformSampler(AbstractTeacher):
     def __init__(self, lower_bound, upper_bound):
         self.lower_bound = lower_bound
         self.upper_bound = upper_bound
+
+    def __str__(self) -> str:
+        return "uniform_sampler"
 
     def sample(self):
         norm_sample = np.random.uniform(low=-1, high=1, size=self.lower_bound.shape)

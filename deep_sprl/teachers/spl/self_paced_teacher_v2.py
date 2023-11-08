@@ -111,6 +111,9 @@ class SelfPacedTeacherV2(AbstractTeacher, AbstractSelfPacedTeacher):
                                                  max_kl, context_bounds, callback=callback, dist_type=dist_type,
                                                  ext_bounds=ext_bounds)
 
+    def __str__(self) -> str:
+        return "self_paced"
+
     def old_kl_con(self, x, old_context_dist, obj=True, grad=False):
         dist = self.torch_dist.from_weights(self.context_dim, x, dtype=torch.float64)
         # kl_div = torch.distributions.kl.kl_divergence(old_context_dist.distribution_t, dist.distribution_t)

@@ -44,7 +44,7 @@ class GoalGAN(AbstractTeacher):
             self.gan.pretrain(pretrain_samples)
 
     def __str__(self) -> str:
-        return "goalgan"
+        return "goal_gan"
 
     def sample(self):
         if self.context_queue.empty():

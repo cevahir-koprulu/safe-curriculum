@@ -149,21 +149,21 @@ class Learner(Enum):
     def ppolag(self):
         return self.value == Learner.PPOLag.value
     
-    def create_learner(self, env_id, custom_cfg, wrapper_kwargs=None):
-        model = omnisafe.Agent(str(self()), env_id, custom_cfg=custom_cfg)
+    def create_learner(self, env_id, custom_cfgs, wrapper_kwargs=None):
+        model = omnisafe.Agent(str(self), env_id, custom_cfgs=custom_cfgs)
         if wrapper_kwargs is not None:
-            model.agent._env.initialize_wrapper(**wrapper_kwargs)
-        return model, AgentInterface(model, model._device)
+            model.agent._env._env.initialize_wrapper(**wrapper_kwargs)
+        return model, AgentInterface(model, model.agent._device)
 
-    def load_for_evaluation(self, model_path, obs_space, act_space, custom_cfg, device='cpu'):
+    def load_for_evaluation(self, model_path, obs_space, act_space, custom_cfgs, device='cpu'):
         actor_builder = ActorBuilder(
             obs_space=obs_space,
             act_space=act_space,
-            hidden_sizes=custom_cfg['model_cfgs']['actor']['hidden_sizes'],
-            activation=custom_cfg['model_cfgs']['actor']['activation'],
-            weight_initialization_mode=custom_cfg['model_cfgs']['weight_initialization_mode'],
+            hidden_sizes=custom_cfgs['model_cfgs']['actor']['hidden_sizes'],
+            activation=custom_cfgs['model_cfgs']['actor']['activation'],
+            weight_initialization_mode=custom_cfgs['model_cfgs']['weight_initialization_mode'],
         )
-        actor = actor_builder.build_actor(custom_cfg['model_cfgs']['actor_type'])
+        actor = actor_builder.build_actor(custom_cfgs['model_cfgs']['actor_type'])
         model_params = torch.load(model_path, map_location=device)
         actor.load_state_dict(model_params['pi'])
         return actor

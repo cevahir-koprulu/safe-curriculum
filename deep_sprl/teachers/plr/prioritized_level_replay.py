@@ -1,4 +1,4 @@
-from typing import ClassVar, List
+from typing import ClassVar, List, Dict, Any
 
 import torch
 import numpy as np

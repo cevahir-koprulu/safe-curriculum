@@ -8,6 +8,7 @@ import torch
 from gymnasium import spaces
 
 from omnisafe.envs.core import CMDP, env_register
+from omnisafe.typing import DEVICE_CPU
 
 from deep_sprl.util.viewer import Viewer
 
@@ -24,16 +25,20 @@ class ContextualSafetyPointMass2D(CMDP):
 
     def __init__(self, 
                  env_id: str,
+                 num_envs: int = 1,
+                 device: torch.device = DEVICE_CPU,
                  **kwargs,
                  ):
         super().__init__(env_id)
+        self._num_envs = num_envs
+        self._device = device
         self._action_space = spaces.Box(low=-10., high=10., shape=(2,))
         self._observation_space = spaces.Box(low=np.array([-self.ROOM_WIDTH/2, -np.inf, -4., -np.inf]),
                                              high=np.array([self.ROOM_WIDTH/2, np.inf, 4., np.inf]))
         self._state = None
         self._timestep = 0
         self._lava_passes = []
-        self._context = np.array([0.0, 2.0])
+        self._context = np.array([self.ROOM_WIDTH*0.3, -self.ROOM_WIDTH*0.3])
         self._viewer = Viewer(self.ROOM_WIDTH, 8, background=(255, 255, 255))
 
         self._dt = 0.01
@@ -55,7 +60,7 @@ class ContextualSafetyPointMass2D(CMDP):
         return self._state, {}
 
     def _step_internal(self, state, action):
-        action = torch.clip(action, 
+        action = torch.clip(action.detach().cpu(), 
                             torch.as_tensor(self.action_space.low), 
                             torch.as_tensor(self.action_space.high))
 

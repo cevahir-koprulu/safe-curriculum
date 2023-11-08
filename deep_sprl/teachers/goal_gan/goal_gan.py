@@ -43,6 +43,9 @@ class GoalGAN(AbstractTeacher):
         if pretrain_samples is not None:
             self.gan.pretrain(pretrain_samples)
 
+    def __str__(self) -> str:
+        return "goalgan"
+
     def sample(self):
         if self.context_queue.empty():
             if np.random.random() > self.p_old or self.success_buffer.size == 0:

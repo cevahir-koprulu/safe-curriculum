@@ -85,6 +85,9 @@ class ALPGMM(AbstractTeacher):
         # Boring book-keeping
         self.bk = {'weights': [], 'covariances': [], 'means': [], 'tasks_alps': [], 'episodes': []}
 
+    def __str__(self) -> str:
+        return "alpgmm"
+
     def init_gmm(self, nb_gaussians):
         return GMM(n_components=nb_gaussians, covariance_type='full', random_state=self.seed,
                    warm_start=self.warm_start, n_init=self.nb_em_init)

@@ -8,7 +8,7 @@ import numpy as np
 from abc import ABC, abstractmethod
 from enum import Enum
 from deep_sprl.util.parameter_parser import create_override_appendix
-
+from omnisafe.models.actor import ActorBuilder
 
 def set_seed(seed):
     random.seed(seed)
@@ -96,118 +96,77 @@ class CurriculumType(Enum):
         else:
             raise RuntimeError("Invalid string: '" + string + "'")
 
-
 class AgentInterface(ABC):
 
     def __init__(self, learner, device):
         self.learner = learner
         self.device = device
 
-    def estimate_value(self, inputs):
-        return self.estimate_value_internal(inputs)
-
-    @abstractmethod
-    def estimate_value_internal(self, inputs):
-        pass
-
-    @abstractmethod
-    def mean_policy_std(self):
-        pass
-
-    @abstractmethod
-    def get_action(self, observations):
-        pass
-
-    def save(self, log_dir):
-        raise NotImplementedError("Saving not implemented: Omnisafe logger does this automatically")
-        # self.learner.save(os.path.join(log_dir, "model"))
-
-
-class SACInterface(AgentInterface):
-
-    def __init__(self, learner, device):
-        super().__init__(learner, device)
-
-    def estimate_value_internal(self, inputs):
-        action, value_r, value_c, log_prob = self.learner._actor_critic.step(inputs, deterministic=False)
+    def estimate_value_r(self, observations):
+        action, value_r, value_c, log_prob = self.learner._actor_critic.step(observations, deterministic=False)
         return value_r.detach().cpu().numpy()  
 
-    def get_action(self, observations):
-        action, value_r, value_c, log_prob = self.learner._actor_critic.step(inputs, deterministic=False)
-        return action.detach().cpu().numpy()
+    def estimate_value_c(self, observations):
+        action, value_r, value_c, log_prob = self.learner._actor_critic.step(observations, deterministic=False)
+        return value_c.detach().cpu().numpy()
 
     def mean_policy_std(self):
         return self.learner._actor_critic.actor.std.detach().cpu().numpy()
 
-class PPOInterface(AgentInterface):
-
-    def __init__(self, learner, obs_dim, device):
-        super().__init__(learner, obs_dim, device)
-        self.grad_fn = []
-
-    def estimate_value_internal(self, inputs):
-        action, value_r, value_c, log_prob = self.learner._actor_critic.step(inputs, deterministic=False)
-        return value_r.detach().cpu().numpy() 
-
     def get_action(self, observations):
-        action, value_r, value_c, log_prob = self.learner._actor_critic.step(inputs, deterministic=False)
+        action, value_r, value_c, log_prob = self.learner._actor_critic.step(observations, deterministic=False)
         return action.detach().cpu().numpy()
 
-    def mean_policy_std(self):
-        return self.learner._actor_critic.actor.std.detach().cpu().numpy()
-
-class SACEvalWrapper:
-
-    def __init__(self, model):
-        self.model = model
-
-    def step(self, observation, state=None, deterministic=False):
-        return self.model._actor_critic.step(observation, deterministic=deterministic)[0]
-
-class PPOEvalWrapper:
-
-    def __init__(self, model):
-        self.model = model
-
-    def step(self, observation, state=None, deterministic=False):
-        return self.model._actor_critic.step(observation, deterministic=deterministic)[0]
+    def save(self, log_dir):
+        params = {
+            'actor_critic': self.learner._actor_critic.state_dict() 
+            if hasattr(self.learner._actor_critic, 'state_dict') 
+            else self.learner._actor_critic,
+        }
+        torch.save(params, log_dir)
 
 class Learner(Enum):
     PPO = 1
     SAC = 2
+    PPOLag = 3
 
     def __str__(self):
         if self.ppo():
             return "PPO"
-        else:
+        elif self.sac():
             return "SAC"
+        elif self.ppolag():
+            return "PPOLag"
+        else:
+            return "Invalid"
 
     def ppo(self):
         return self.value == Learner.PPO.value
 
     def sac(self):
         return self.value == Learner.SAC.value
+    
+    def ppolag(self):
+        return self.value == Learner.PPOLag.value
+    
+    def create_learner(self, env_id, custom_cfg, wrapper_kwargs=None):
+        model = omnisafe.Agent(str(self()), env_id, custom_cfg=custom_cfg)
+        if wrapper_kwargs is not None:
+            model.agent._env.initialize_wrapper(**wrapper_kwargs)
+        return model, AgentInterface(model, model._device)
 
-    def create_learner(self, env, parameters):
-        # Be careful:
-        # - env should be env_id
-        # - parameters should be a custom_cfg dict
-        model = omnisafe.Agent(self.__str__(), env, parameters)
-        if self.ppo():
-            interface = PPOInterface(model, model._device)
-        else:
-            interface = SACInterface(model, model._device)
-        return model, interface
-
-    def load(self, path, env, device):
-        raise NotImplementedError("Loading not implemented: Omnisafe evaluate does this/")
-
-    def load_for_evaluation(self, path, env, device):
-        model = self.load(path, env, device)
-        if self.sac():
-            return SACEvalWrapper(model)
-        else:
-            return PPOEvalWrapper(model)
+    def load_for_evaluation(self, model_path, obs_space, act_space, custom_cfg, device='cpu'):
+        actor_builder = ActorBuilder(
+            obs_space=obs_space,
+            act_space=act_space,
+            hidden_sizes=custom_cfg['model_cfgs']['actor']['hidden_sizes'],
+            activation=custom_cfg['model_cfgs']['actor']['activation'],
+            weight_initialization_mode=custom_cfg['model_cfgs']['weight_initialization_mode'],
+        )
+        actor = actor_builder.build_actor(custom_cfg['model_cfgs']['actor_type'])
+        model_params = torch.load(model_path, map_location=device)
+        actor.load_state_dict(model_params['pi'])
+        return actor
 
     @staticmethod
     def from_string(string):
@@ -215,6 +174,8 @@ class Learner(Enum):
             return Learner.PPO
         elif string == str(Learner.SAC):
             return Learner.SAC
+        elif string == str(Learner.PPOLag):
+            return Learner.PPOLag
         else:
             raise RuntimeError("Invalid string: '" + string + "'")
 
@@ -307,23 +268,26 @@ class AbstractExperiment(ABC):
                             leaner_string + override_appendix + self.get_other_appendix(), "seed-" + str(self.seed))
 
     def train(self):
-        model, timesteps, callback_params = self.create_experiment()
-        log_directory = self.get_log_dir()
-
-        if os.path.exists(log_directory):
-            print("Log directory already exists! Going directly to evaluation")
-        else:
-            callback = ExperimentCallback(log_directory=log_directory, **callback_params)
-            model.learn(total_timesteps=timesteps, reset_num_timesteps=False, callback=callback)
+        model, omnisafe_log_dir = self.create_experiment()
+        os.makedirs(self.get_log_dir(), exist_ok=True)
+        with open(os.path.join(self.get_log_dir(), 'omnisafe_log_dir.txt'), 'w') as f:
+            f.write(omnisafe_log_dir)
+        model.learn()
 
     def evaluate(self, eval_type=0):
         log_dir = self.get_log_dir()
-
         iteration_dirs = [d for d in os.listdir(log_dir) if d.startswith("iteration-")]
         unsorted_iterations = np.array([int(d[len("iteration-"):]) for d in iteration_dirs])
         idxs = np.argsort(unsorted_iterations)
         sorted_iteration_dirs = np.array(iteration_dirs)[idxs].tolist()
 
+        with open(os.path.join(log_dir, 'omnisafe_log_dir.txt'), 'r') as f:
+            omnisafe_log_dir = f.read()
+        omnisafe_saved_models = [d for d in os.listdir(os.path.join(omnisafe_log_dir, 'torch_save'))]
+        unsorted_models = np.array([int(d[len("epoch-"):]) for d in omnisafe_saved_models])
+        idxs = np.argsort(unsorted_models)
+        sorted_models = np.array(omnisafe_saved_models)[idxs].tolist()
+        
         # First evaluate the KL-Divergences if Self-Paced learning was used
         if self.curriculum.self_paced() and not os.path.exists(os.path.join(log_dir, "kl_divergences.pkl")):
             kl_divergences = []
@@ -341,15 +305,16 @@ class AbstractExperiment(ABC):
             0: "performance",
             1: "performance_hom",
         }
-        for iteration_dir in sorted_iteration_dirs:
+        for iteration_dir, saved_model in zip(sorted_iteration_dirs, sorted_models):
             print(f"Evaluating {iteration_dir} (eval_type={eval_type})")
             iteration_log_dir = os.path.join(log_dir, iteration_dir)
             performance_log_dir = os.path.join(iteration_log_dir, f"{performance_files[eval_type]}.npy")
+            model_path = os.path.join(omnisafe_log_dir, 'torch_save', saved_model)
             eval_type_str = performance_files[eval_type][len("performance"):]
             if not os.path.exists(performance_log_dir):
             # if True:
                 disc_rewards, eval_contexts, context_p, successful_eps, costs = self.evaluate_learner(
-                    path=iteration_log_dir,
+                    model_path=model_path,
                     eval_type=eval_type_str,
                 )
                 print(f"Evaluated {iteration_dir} (eval_type={eval_type}): {np.mean(disc_rewards)}")
@@ -372,17 +337,25 @@ class AbstractExperiment(ABC):
         idxs = np.argsort(unsorted_iterations)
         sorted_iteration_dirs = np.array(iteration_dirs)[idxs].tolist()
 
+        with open(os.path.join(log_dir, 'omnisafe_log_dir.txt'), 'r') as f:
+            omnisafe_log_dir = f.read()
+        omnisafe_saved_models = [d for d in os.listdir(os.path.join(omnisafe_log_dir, 'torch_save'))]
+        unsorted_models = np.array([int(d[len("epoch-"):]) for d in omnisafe_saved_models])
+        idxs = np.argsort(unsorted_models)
+        sorted_models = np.array(omnisafe_saved_models)[idxs].tolist()
+        
         if self.curriculum.self_paced():
-            for iteration_dir in sorted_iteration_dirs:
+            for iteration_dir, saved_model in zip(sorted_iteration_dirs, sorted_models):
                 print(f"Evaluating wrt context distribution in {iteration_dir}")
                 iteration_log_dir = os.path.join(log_dir, iteration_dir)
                 teacher = self.create_self_paced_teacher()
                 teacher.load(iteration_log_dir)
+                model_path = os.path.join(omnisafe_log_dir, 'torch_save', saved_model)
                 training_contexts = np.array([teacher.sample() for _ in range(num_contexts)])
                 performance_log_dir = os.path.join(iteration_log_dir, "performance_training.npy")
                 if not os.path.exists(performance_log_dir):
                     disc_rewards, successful_eps, costs = self.evaluate_training(
-                        path=iteration_log_dir,
+                        model_path=model_path,
                         training_contexts=training_contexts,
                     )
                     context_p = teacher.context_dist.log_pdf_t(torch.from_numpy(training_contexts)).detach().numpy() 

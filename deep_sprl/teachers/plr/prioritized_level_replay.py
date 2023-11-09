@@ -148,10 +148,11 @@ class PLRWrapper(BaseWrapper):
                            value_fn=None,
                            lam=None,
                            use_undiscounted_reward=False,
+                           eval_mode=False,
                            ):
         super().initialize_wrapper(log_dir, teacher, discount_factor, context_post_processing, 
                                    episodes_per_update, save_interval, step_divider, value_fn, lam,
-                                   use_undiscounted_reward)
+                                   use_undiscounted_reward, eval_mode)
         self.state_trace = []
         self.reward_trace = []
         self.step_count = 0

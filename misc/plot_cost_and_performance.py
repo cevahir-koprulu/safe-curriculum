@@ -10,27 +10,37 @@ sys.path.insert(1, os.path.join(sys.path[0], '..'))
 
 os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 
-def get_results(base_dir, iterations):
-    expected_return = []
-    expected_success = []
-    expected_cum_cost = []
-    for iteration in iterations:
-        perf_file = os.path.join(base_dir, f"iteration-{iteration}", "performance.npy")
-        if os.path.exists(perf_file):
-            results = np.load(perf_file)
-            disc_rewards = results[:, 1]
-            cost = results[:, -1]
-            success = results[:, -2]
-            expected_return.append(np.mean(disc_rewards))
-            expected_cum_cost.append(np.mean(cost))
-            expected_success.append(np.mean(success))
-        else:
-            print(f"No evaluation data found: {perf_file}")
-            expected_return = []
-            expected_cum_cost = []
-            expected_success = []
-            break
-    return expected_return, expected_cum_cost, expected_success
+def get_results(base_dir, seeds, iterations):
+    ret = {"mid": [], "qlow": [], "qhigh": [], "min": [], "max": []}
+    cost = {"mid": [], "qlow": [], "qhigh": [], "min": [], "max": []}
+    succ = {"mid": [], "qlow": [], "qhigh": [], "min": [], "max": []}
+    def update_results(res_dict, res):
+        res_dict["mid"].append(np.mean(res, axis=0))
+        res_dict["qlow"].append(np.quantile(res, 0.25, axis=0))
+        res_dict["qhigh"].append(np.quantile(res, 0.75, axis=0))
+        res_dict["min"].append(np.min(res, axis=0))
+        res_dict["max"].append(np.max(res, axis=0))
+
+    for seed in seeds:
+        rets = []
+        costs = []
+        succs = []
+        for iteration in iterations:
+            perf_file = os.path.join(base_dir, f"seed-{seed}", f"iteration-{iteration}", "performance.npy")
+            if os.path.exists(perf_file):
+                results = np.load(perf_file)
+                disc_rewards = results[:, 1]
+                cost = results[:, -1]
+                success = results[:, -2]
+                rets.append(np.mean(disc_rewards))
+                costs.append(np.mean(cost))
+                succs.append(np.mean(success))
+            
+        if len(rets) > 0:
+            update_results(ret, rets)
+            update_results(cost, costs)
+            update_results(succ, succs)
+    return ret, cost, succ
 
 def plot_results(base_log_dir, num_updates_per_iteration, seeds, env, setting, algorithms, figname_extra):
     plt.rcParams['font.family'] = 'serif'
@@ -57,47 +67,30 @@ def plot_results(base_log_dir, num_updates_per_iteration, seeds, env, setting, a
         color = algorithms[cur_algo]["color"]
         print(algorithm)
 
-        expected_return = []
-        expected_cum_cost = []
-        expected_success = []
-        for seed in seeds:
-            base_dir = os.path.join(base_log_dir, env, algorithm, model, f"seed-{seed}")
-            print(base_dir)
-            expected_return_seed, expected_cum_cost_seed, expected_success_seed = get_results(
-                base_dir=base_dir,
-                iterations=iterations,
-            )
-            if len(expected_return_seed) == 0:
-                continue
+        base_dir = os.path.join(base_log_dir, env, algorithm, model)
+        print(base_dir)
+        ret, cost, succ = get_results(
+            base_dir=base_dir,
+            seeds=seeds,
+            iterations=iterations,
+        )
+        expected_return_mid = ret["mid"]
+        expected_return_qlow = ret["qlow"]
+        expected_return_qhigh = ret["qhigh"]
+        expected_return_min = ret["min"]
+        expected_return_max = ret["max"]
 
-            expected_return.append(expected_return_seed)
-            expected_cum_cost.append(expected_cum_cost_seed)
-            expected_success.append(expected_success_seed)
+        expected_cum_cost_mid = cost["mid"]
+        expected_cum_cost_qlow = cost["qlow"]
+        expected_cum_cost_qhigh = cost["qhigh"]
+        expected_cum_cost_min = cost["min"]
+        expected_cum_cost_max = cost["max"]
 
-        expected_return = np.array(expected_return)
-        # expected_return_mid = np.median(expected_return, axis=0)
-        # expected_return_qlow = np.quantile(expected_return, 0.25, axis=0)
-        # expected_return_qhigh = np.quantile(expected_return, 0.75, axis=0)
-        expected_return_mid = np.mean(expected_return, axis=0)
-        expected_return_qlow = np.min(expected_return, axis=0)
-        expected_return_qhigh = np.max(expected_return, axis=0)
-
-        expected_cum_cost = np.array(expected_cum_cost)
-        # expected_cum_cost_mid = np.median(expected_cum_cost, axis=0)
-        # expected_cum_cost_qlow = np.quantile(expected_cum_cost, 0.25, axis=0)
-        # expected_cum_cost_qhigh = np.quantile(expected_cum_cost, 0.75, axis=0)
-        expected_cum_cost_mid = np.mean(expected_cum_cost, axis=0)
-        expected_cum_cost_qlow = np.min(expected_cum_cost, axis=0)
-        expected_cum_cost_qhigh = np.max(expected_cum_cost, axis=0)
-
-        expected_success = np.array(expected_success)
-        # expected_success_mid = np.median(expected_success, axis=0)
-        # expected_success_qlow = np.quantile(expected_success, 0.25, axis=0)
-        # expected_success_qhigh = np.quantile(expected_success, 0.75, axis=0)
-        expected_success_mid = np.mean(expected_success, axis=0)
-        expected_success_qlow = np.min(expected_success, axis=0)
-        expected_success_qhigh = np.max(expected_success, axis=0)
-
+        expected_success_mid = succ["mid"]
+        expected_success_qlow = succ["qlow"]
+        expected_success_qhigh = succ["qhigh"]
+        expected_success_min = succ["min"]
+        expected_success_max = succ["max"]
 
         alg_exp_mid[cur_algo] = expected_return_mid[-1]
 

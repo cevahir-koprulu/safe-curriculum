@@ -141,7 +141,8 @@ class SafetyPointMass2DExperiment(AbstractExperiment):
         wrapper_kwargs = {'log_dir': self.get_log_dir(),
                           'teacher': teacher,
                           'discount_factor': self.DISCOUNT_FACTOR,
-                          'step_divider': self.STEPS_PER_ITER}
+                          'step_divider': self.STEPS_PER_ITER,
+                          'eval_mode': evaluation}
         
         wrapper_kwargs = update_params(wrapper_kwargs, special_kwargs)
         return env_id, teacher_id, wrapper_kwargs
@@ -353,21 +354,21 @@ class SafetyPointMass2DExperiment(AbstractExperiment):
             context = eval_contexts[i, :]
             for j in range(num_run):
                 self.eval_env.set_context(context)
-                obs = self.eval_env.reset()
+                obs, info = self.eval_env.reset()
                 t = 0
-                # print(f"Context: {context}")
-                # print(f"t: {t} || obs: {obs}")
-                done = False
+                terminated = False
+                truncated = False
                 success = []
                 costs = []
                 returns = []
-                while not done:
+                while not (terminated or truncated):
                     t +=1 
-                    action = model.predict(obs, deterministic=False)
-                    obs, rewards, done, infos = self.eval_env.step(action)
-                    success.append(infos[0]["success"]*1)
-                    costs.append(infos[0]["cost"])
-                    returns.append(rewards[0])
+                    with torch.no_grad():
+                        action = model.predict(obs, deterministic=False)
+                    obs, reward, cost, terminated, truncated, info = self.eval_env.step(action)
+                    success.append(info["success"]*1)
+                    costs.append(cost)
+                    returns.append(reward)
                 if any(success):
                     num_succ_eps_per_c[i] += 1. / num_run
                 all_costs[i] += np.cumprod((np.ones(200)*self.DISCOUNT_FACTOR))/self.DISCOUNT_FACTOR@np.array(costs) / num_run
@@ -398,19 +399,21 @@ class SafetyPointMass2DExperiment(AbstractExperiment):
             context = training_contexts[i, :]
             for j in range(num_run):
                 self.eval_env.set_context(context)
-                obs = self.eval_env.reset()
+                obs, info = self.eval_env.reset()
                 t = 0
-                done = False
+                terminated = False
+                truncated = False
                 success = []
                 costs = []
                 returns = []
-                while not done:
+                while not (terminated or truncated):
                     t +=1 
-                    action = model.step(obs, state=None, deterministic=False)
-                    obs, rewards, done, infos = self.eval_env.step(action)
-                    success.append(infos[0]["success"]*1)
-                    costs.append(infos[0]["cost"])
-                    returns.append(rewards[0])
+                    with torch.no_grad():
+                        action = model.predict(obs, deterministic=False)
+                    obs, reward, cost, terminated, truncated, info = self.eval_env.step(action)
+                    success.append(info["success"]*1)
+                    costs.append(cost)
+                    returns.append(reward)
                 if any(success):
                     num_succ_eps_per_c[i] += 1. / num_run
                 all_costs[i] += np.cumprod((np.ones(200)*self.DISCOUNT_FACTOR))/self.DISCOUNT_FACTOR@np.array(costs) / num_run

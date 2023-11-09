@@ -51,6 +51,7 @@ class BaseWrapper(CMDP):
                            value_fn=None,
                            lam=None,
                            use_undiscounted_reward=False,
+                           eval_mode=False,
                            ):
         self.log_dir = log_dir
         self.teacher = teacher
@@ -63,7 +64,8 @@ class BaseWrapper(CMDP):
         self.value_fn = value_fn
         self.lam = lam
         self.use_undiscounted_reward = use_undiscounted_reward
-        
+        self.eval_mode = eval_mode
+
         self.stats_buffer = Buffer(5, 10000, True)
         self.context_trace_buffer = Buffer(5, 10000, True)
 
@@ -103,6 +105,9 @@ class BaseWrapper(CMDP):
         pass
 
     def step_callback(self):
+        if self.eval_mode:
+            return
+        
         if self.algorithm_iteration == 0:
             self.init_step_callback()
 

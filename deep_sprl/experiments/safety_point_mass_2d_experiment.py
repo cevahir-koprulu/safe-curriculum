@@ -61,7 +61,7 @@ class SafetyPointMass2DExperiment(AbstractExperiment):
     NUM_ITER = 1000 # 500
     STEPS_PER_ITER = 4000
     DISCOUNT_FACTOR = 0.99
-    LAM = 0.99
+    LAM = 0.95 # 0.99
 
     # ACL Parameters [found after search over [0.05, 0.1, 0.2] x [0.01, 0.025, 0.05]]
     ACL_EPS = 0.2
@@ -191,7 +191,7 @@ class SafetyPointMass2DExperiment(AbstractExperiment):
                 'algo_cfgs': {
                     'steps_per_epoch': self.STEPS_PER_ITER, # to eval, log, actor scheduler step
                     'update_iters': 10, # gradient steps
-                    'batch_size': 128,
+                    'batch_size': 64, # 128,
                     'target_kl': 0.02,
                     'entropy_coef': 0.0,
                     'reward_normalize': False,
@@ -199,9 +199,9 @@ class SafetyPointMass2DExperiment(AbstractExperiment):
                     'obs_normalize': True,
                     'kl_early_stop': True,
                     'use_max_grad_norm': True,
-                    'max_grad_norm': 0.5,
+                    'max_grad_norm': 40.0, # 0.5,
                     'use_critic_norm': True,
-                    'critic_norm_coef': 0.5, # 0.001,
+                    'critic_norm_coef': 0.001, #  0.5,
                     'gamma': self.DISCOUNT_FACTOR,
                     'cost_gamma': self.DISCOUNT_FACTOR,
                     'lam': self.LAM,
@@ -280,14 +280,13 @@ class SafetyPointMass2DExperiment(AbstractExperiment):
             },
             'model_cfgs':  {
                 'weight_initialization_mode': "kaiming_uniform",
-                'linear_lr_decay': True,
                 'actor': {
-                    'hidden_sizes': [128, 128], # [128, 128, 128],
+                    'hidden_sizes': [64, 64], # [128, 128, 128],
                     'activation': "tanh",
                     'lr': 3e-4,
                 },
                 'critic': {
-                    'hidden_sizes': [128, 128], # [128, 128, 128],
+                    'hidden_sizes': [64, 64], # [128, 128, 128],
                     'activation': "tanh",
                     'lr': 3e-4,
                 },

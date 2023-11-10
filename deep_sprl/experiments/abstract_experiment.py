@@ -340,7 +340,7 @@ class AbstractExperiment(ABC):
         with open(os.path.join(log_dir, 'omnisafe_log_dir.txt'), 'r') as f:
             omnisafe_log_dir = f.read()
         omnisafe_saved_models = [d for d in os.listdir(os.path.join(omnisafe_log_dir, 'torch_save'))]
-        unsorted_models = np.array([int(d[len("epoch-"):]) for d in omnisafe_saved_models])
+        unsorted_models = np.array([int(d[len("epoch-"):-3]) for d in omnisafe_saved_models])
         idxs = np.argsort(unsorted_models)
         sorted_models = np.array(omnisafe_saved_models)[idxs].tolist()
         

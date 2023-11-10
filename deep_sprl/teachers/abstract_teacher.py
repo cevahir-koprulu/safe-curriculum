@@ -52,6 +52,7 @@ class BaseWrapper(CMDP):
                            lam=None,
                            use_undiscounted_reward=False,
                            eval_mode=False,
+                           penalty_coeff=0.,
                            ):
         self.log_dir = log_dir
         self.teacher = teacher
@@ -65,6 +66,7 @@ class BaseWrapper(CMDP):
         self.lam = lam
         self.use_undiscounted_reward = use_undiscounted_reward
         self.eval_mode = eval_mode
+        self.penalty_coeff = penalty_coeff
 
         self.stats_buffer = Buffer(5, 10000, True)
         self.context_trace_buffer = Buffer(5, 10000, True)
@@ -86,6 +88,8 @@ class BaseWrapper(CMDP):
     def init_step_callback(self):
         self.last_time = None
         self.format = "   %4d    | %.1E |   %3d    |  %.2E  |  %.2E  |  %.2E  |  %.2E  "
+        if self.penalty_coeff != 0.:
+            self.format += "|  %.2E  |  %.2E  "
         if self.teacher is not None:
             if str(self.teacher)=="self_paced":
                 context_dim = self.teacher.context_dim
@@ -94,7 +98,10 @@ class BaseWrapper(CMDP):
                     text += ", %.2E"
                 text += "] "
                 self.format += text + text
-        header = " Iteration |  Time   | Ep. Len. | Mean Reward | Mean Disc. Reward | Mean Cost | Mean Disc. Cost "
+        header = " Iteration |  Time   | Ep. Len. | Mean Reward | Mean Disc. Reward "+\
+            "| Mean Cost | Mean Disc. Cost "
+        if self.penalty_coeff != 0.:
+            header += "| Mean PenRew | Mean Disc. PenRew "
         if self.teacher is not None:
             if str(self.teacher)=="self_paced":
                 header += "|     Context mean     |      Context std     "
@@ -121,7 +128,10 @@ class BaseWrapper(CMDP):
             data_tpl += (dt,)
 
             mean_rew, mean_disc_rew, mean_cost, mean_disc_cost, mean_length = self.get_statistics()
-            data_tpl += (int(mean_length), mean_rew, mean_disc_rew, mean_cost, mean_disc_cost)
+            data_tpl += (int(mean_length), mean_rew, mean_disc_rew, mean_cost, mean_disc_cost,)
+            if self.penalty_coeff != 0.:
+                data_tpl += (mean_rew - self.penalty_coeff * mean_cost,
+                             mean_disc_rew - self.penalty_coeff * mean_disc_cost,)
 
             if str(self.teacher)=="self_paced":
                 context_mean = self.teacher.context_dist.mean()
@@ -166,6 +176,8 @@ class BaseWrapper(CMDP):
         obs = torch.cat((obs, torch.as_tensor(self.processed_context))).float()
 
         self.cur_initial_state = obs.detach().clone()
+        # input("***** RESET *****")
+        # print("Context:", self.cur_context, "Obs:", obs, "Info:", info)
         return obs, info
 
     def set_context(self, context):
@@ -182,8 +194,12 @@ class BaseWrapper(CMDP):
         self.discounted_cost += self.cur_disc * cost
         self.cur_disc *= self.discount_factor
         self.step_length += 1.
-
+        # print("Step:", self.step_length, "Obs:", obs, "Reward:", reward, "Cost:", cost, "Terminated:", terminated, "Truncated:", truncated, "Info:", info)
         if terminated or truncated:
+            # print("Done!", "Undisc. Reward:", self.undiscounted_reward, "Disc. Reward:", self.discounted_reward, 
+            #       "Undisc. Cost:", self.undiscounted_cost, "Disc. Cost:", self.discounted_cost,
+            #       "Undisc. PenRew:", self.undiscounted_reward - self.penalty_coeff * self.undiscounted_cost,
+            #       "Disc. PenRew:", self.discounted_reward - self.penalty_coeff * self.discounted_cost)
             self.done_callback(step, self.cur_initial_state.detach().clone(), self.cur_context, 
                                self.discounted_reward, self.undiscounted_reward,
                                self.discounted_cost, self.undiscounted_cost)
@@ -198,6 +214,8 @@ class BaseWrapper(CMDP):
 
             self.undiscounted_reward = 0.
             self.discounted_reward = 0.
+            self.undiscounted_cost = 0.
+            self.discounted_cost = 0.
             self.cur_disc = 1.
             self.step_length = 0.
 

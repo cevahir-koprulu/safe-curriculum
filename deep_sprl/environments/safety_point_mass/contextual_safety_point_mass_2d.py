@@ -105,11 +105,11 @@ class ContextualSafetyPointMass2D(CMDP):
         self._state = new_state
         cost = torch.as_tensor(num_lava_passes * self._single_lava_pass_cost)
         r_coeff = 0.6
-        reward = torch.as_tensor(np.exp(-r_coeff * 
-                                        np.linalg.norm(self.goal_state[0::2] - 
-                                                       new_state[0::2])))
-        info = {"success": torch.as_tensor(np.linalg.norm(self.goal_state[0::2] - 
-                                                          new_state[0::2]) < 0.25),
+        reward = torch.as_tensor(torch.exp(-r_coeff * 
+                                        torch.norm(self.goal_state[0::2] - 
+                                                       new_state[0::2], p=2)))
+        info = {"success": torch.as_tensor(torch.norm(self.goal_state[0::2] - 
+                                                          new_state[0::2], p=2) < 0.25),
                 "cost": cost}
         terminated = truncated = torch.as_tensor(self._timestep >= self.MAX_TIME_STEPS)
         if truncated:

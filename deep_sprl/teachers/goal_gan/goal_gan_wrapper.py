@@ -32,7 +32,6 @@ class GoalGANWrapper(BaseWrapper):
         self._action_space = self._env.action_space
         self._metadata = self._env.metadata
         
-
     def done_callback(self, step, cur_initial_state, cur_context, discounted_reward, undiscounted_reward,
                       discounted_cost, undiscounted_cost):
         self.teacher.update(cur_context, float(step[-1]["success"]))

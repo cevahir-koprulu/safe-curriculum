@@ -46,10 +46,11 @@ class DummyWrapper(BaseWrapper):
                            lam=None,
                            use_undiscounted_reward=False,
                            eval_mode=False,
+                           penalty_coeff=0.,
                            ):
         super().initialize_wrapper(log_dir, teacher, discount_factor, context_post_processing, 
                                    episodes_per_update, save_interval, step_divider, value_fn, lam,
-                                   use_undiscounted_reward, eval_mode)
+                                   use_undiscounted_reward, eval_mode, penalty_coeff)
         self.context_buffer = Buffer(3, episodes_per_update + 1, True)
 
     def done_callback(self, step, cur_initial_state, cur_context, discounted_reward, undiscounted_reward,

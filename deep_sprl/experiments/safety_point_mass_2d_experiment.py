@@ -20,6 +20,8 @@ from scipy.stats import multivariate_normal
 from deep_sprl.environments.safety_point_mass import ContextualSafetyPointMass2D
 
 class SafetyPointMass2DExperiment(AbstractExperiment):
+    PENALTY_COEFFICIENT = {Learner.SAC: 0.0, Learner.PPO: 0.1, Learner.PPOLag: 0.0}
+
     TARGET_TYPE = "narrow"
     TARGET_MEAN = np.array([ContextualSafetyPointMass2D.ROOM_WIDTH*0.3, 
                             -ContextualSafetyPointMass2D.ROOM_WIDTH*0.3])
@@ -32,7 +34,6 @@ class SafetyPointMass2DExperiment(AbstractExperiment):
                                      -ContextualSafetyPointMass2D.ROOM_WIDTH*0.3])
     UPPER_CONTEXT_BOUNDS = np.array([ContextualSafetyPointMass2D.ROOM_WIDTH*0.3,
                                      ContextualSafetyPointMass2D.ROOM_WIDTH/2])
-    EXT_CONTEXT_BOUNDS = np.array([5., 5.])
 
     def target_log_likelihood(self, cs):
         return multivariate_normal.logpdf(cs, self.TARGET_MEAN, self.TARGET_VARIANCES[self.TARGET_TYPE])
@@ -52,10 +53,10 @@ class SafetyPointMass2DExperiment(AbstractExperiment):
 
     STD_LOWER_BOUND = np.array([0.1, 0.1])
     KL_THRESHOLD = 8000.
-    KL_EPS = 0.5
-    DELTA = 40.0
+    KL_EPS = 1.0 # 0.5
+    DELTA = 30.0
     METRIC_EPS = 0.5
-    EP_PER_UPDATE = 100 # 10
+    EP_PER_UPDATE = 200 # 100 # 10
 
     NUM_ITER = 1000 # 500
     STEPS_PER_ITER = 4000
@@ -142,7 +143,8 @@ class SafetyPointMass2DExperiment(AbstractExperiment):
                           'teacher': teacher,
                           'discount_factor': self.DISCOUNT_FACTOR,
                           'step_divider': self.STEPS_PER_ITER,
-                          'eval_mode': evaluation}
+                          'eval_mode': evaluation,
+                          'penalty_coeff': self.PENALTY_COEFFICIENT[self.learner]}
         
         wrapper_kwargs = update_params(wrapper_kwargs, special_kwargs)
         return env_id, teacher_id, wrapper_kwargs
@@ -208,7 +210,7 @@ class SafetyPointMass2DExperiment(AbstractExperiment):
                     'adv_estimation_method': 'gae',
                     'standardized_rew_adv': True,
                     'standardized_cost_adv': True,
-                    'penalty_coef': 0.0,
+                    'penalty_coef': self.PENALTY_COEFFICIENT[self.learner],
                     'use_cost': False,
                 },
                 'logger_cfgs': {
@@ -280,12 +282,12 @@ class SafetyPointMass2DExperiment(AbstractExperiment):
                 'weight_initialization_mode': "kaiming_uniform",
                 'linear_lr_decay': True,
                 'actor': {
-                    'hidden_sizes': [128, 128, 128],
+                    'hidden_sizes': [128, 128], # [128, 128, 128],
                     'activation': "tanh",
                     'lr': 3e-4,
                 },
                 'critic': {
-                    'hidden_sizes': [128, 128, 128],
+                    'hidden_sizes': [128, 128], # [128, 128, 128],
                     'activation': "tanh",
                     'lr': 3e-4,
                 },

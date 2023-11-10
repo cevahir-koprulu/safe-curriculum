@@ -10,21 +10,20 @@ sys.path.insert(1, os.path.join(sys.path[0], '..'))
 
 os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 def get_results(base_dir, seeds, iterations):
-    ret = {"mid": [], "qlow": [], "qhigh": [], "min": [], "max": []}
-    cost = {"mid": [], "qlow": [], "qhigh": [], "min": [], "max": []}
-    succ = {"mid": [], "qlow": [], "qhigh": [], "min": [], "max": []}
+    ret_dict = {"mid": [], "qlow": [], "qhigh": [], "min": [], "max": []}
+    cost_dict = {"mid": [], "qlow": [], "qhigh": [], "min": [], "max": []}
+    succ_dict = {"mid": [], "qlow": [], "qhigh": [], "min": [], "max": []}
     def update_results(res_dict, res):
         res_dict["mid"].append(np.mean(res, axis=0))
         res_dict["qlow"].append(np.quantile(res, 0.25, axis=0))
         res_dict["qhigh"].append(np.quantile(res, 0.75, axis=0))
         res_dict["min"].append(np.min(res, axis=0))
         res_dict["max"].append(np.max(res, axis=0))
-
-    for seed in seeds:
+    for iteration in iterations:
         rets = []
         costs = []
         succs = []
-        for iteration in iterations:
+        for seed in seeds:
             perf_file = os.path.join(base_dir, f"seed-{seed}", f"iteration-{iteration}", "performance_training.npy")
             if os.path.exists(perf_file):
                 results = np.load(perf_file)
@@ -36,10 +35,11 @@ def get_results(base_dir, seeds, iterations):
                 succs.append(np.mean(success))
             
         if len(rets) > 0:
-            update_results(ret, rets)
-            update_results(cost, costs)
-            update_results(succ, succs)
-    return ret, cost, succ
+            print(rets, costs, succs)
+            update_results(ret_dict, np.array(rets))
+            update_results(cost_dict, np.array(costs))
+            update_results(succ_dict, np.array(succs))
+    return ret_dict, cost_dict, succ_dict
 
 def plot_results(base_log_dir, num_updates_per_iteration, seeds, env, setting, algorithms, figname_extra):
     plt.rcParams['font.family'] = 'serif'
@@ -151,83 +151,31 @@ def main():
     base_log_dir = os.path.join(Path(os.getcwd()).parent, "logs")
     num_updates_per_iteration = 5
     seeds = [str(i) for i in range(1, 4)]
-    env = "safety_point_mass_2d_2_narrow"
-    figname_extra = "_KL_EPS=1.0_training"
+    env = "safety_point_mass_2d_narrow"
+    figname_extra = "_KL_EPS=0.5_training"
 
     algorithms = {
         "safety_point_mass_2d_narrow": {
             "SPDL": {
                 "algorithm": "self_paced",
                 "label": "SPDL",
-                "model": "ppo_DELTA=30.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
+                # "model": "ppo_DELTA=30.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
+                "model": "PPO_DELTA=40.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=0.5",
                 "color": "blue",
             },
-            # "DEF": {
-            #     "algorithm": "default",
-            #     "label": "Default",
-            #     "model": "ppo",
-            #     "color": "magenta",
-            # },
-        },
-        "safety_point_mass_2d_2_narrow": {
-            "SPDL_d0": {
+            "SPDL-Lag": {
                 "algorithm": "self_paced",
-                "label": "SPDL_D=0",
-                "model": "ppo_DELTA=0.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
-                "color": "blue",
+                "label": "SPDL-Lag",
+                "model": "PPOLag_DELTA=40.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=0.5",
+                "color": "red",
             },
-            "SPDL_d10": {
-                "algorithm": "self_paced",
-                "label": "SPDL_D=10",
-                "model": "ppo_DELTA=10.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
-                "color": "cyan",
-            },
-            "SPDL_d20": {
-                "algorithm": "self_paced",
-                "label": "SPDL_D=20",
-                "model": "ppo_DELTA=20.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
-                "color": "olive",
-            },
-            "SPDL_d30": {
-                "algorithm": "self_paced",
-                "label": "SPDL_D=30",
-                "model": "ppo_DELTA=30.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
-                "color": "gold",
-            },
-            "SPDL_d40": {
-                "algorithm": "self_paced",
-                "label": "SPDL_D=40",
-                "model": "ppo_DELTA=40.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
-                "color": "brown",
-            },
-        },
+        }
     }
 
     settings = {
         "safety_point_mass_2d_narrow":{
             "num_iters": 1000,
             "steps_per_iter": 4000,
-            "fontsize": 16,
-            "figsize": (10, 10),
-            "bbox_to_anchor": (.5, 1.05),
-            "subplot_settings": {
-                0: {
-                    "ylabel": 'Ave. return',
-                    "ylim": [-10., 80.],
-                },
-                1: {
-                    "ylabel": 'Ave. cum. cost',
-                    "ylim": [-5.0, 90.],
-                },
-                2: {
-                    "ylabel": 'Ave. succ. rate',
-                    "ylim": [-0.1, 1.1],
-                },
-            },
-        },
-        "safety_point_mass_2d_2_narrow":{
-            "num_iters": 1000,
-            "steps_per_iter": 8000,
             "fontsize": 16,
             "figsize": (10, 10),
             "bbox_to_anchor": (.5, 1.05),

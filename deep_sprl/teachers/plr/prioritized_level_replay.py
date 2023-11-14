@@ -182,6 +182,8 @@ class PLRWrapper(BaseWrapper):
 
     def step(self, action):
         obs, reward, cost, terminated, truncated, info = self._env.step(action)
+        if "final_observation" in info:
+            info["final_observation"] = torch.cat((info["final_observation"], torch.as_tensor(self.processed_context))).float()
         self.step_count += 1
         obs = torch.cat((obs, self.processed_context))
         self.state_trace.append(obs.copy())
@@ -203,6 +205,7 @@ class PLRWrapper(BaseWrapper):
                                     np.concatenate(self.train_value_buffer, axis=0))
                 self.train_state_buffer.clear()
                 self.train_value_buffer.clear()
+
 
         self.update((obs, reward, cost, terminated, truncated, info))
         self.step_callback()

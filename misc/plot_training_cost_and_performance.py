@@ -9,16 +9,19 @@ from pathlib import Path
 sys.path.insert(1, os.path.join(sys.path[0], '..'))
 
 os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
+
+def update_results(res_dict, res):
+    res_dict["mid"].append(np.mean(res, axis=0))
+    res_dict["qlow"].append(np.quantile(res, 0.25, axis=0))
+    res_dict["qhigh"].append(np.quantile(res, 0.75, axis=0))
+    res_dict["min"].append(np.min(res, axis=0))
+    res_dict["max"].append(np.max(res, axis=0))
+
 def get_results(base_dir, seeds, iterations):
     ret_dict = {"mid": [], "qlow": [], "qhigh": [], "min": [], "max": []}
     cost_dict = {"mid": [], "qlow": [], "qhigh": [], "min": [], "max": []}
     succ_dict = {"mid": [], "qlow": [], "qhigh": [], "min": [], "max": []}
-    def update_results(res_dict, res):
-        res_dict["mid"].append(np.mean(res, axis=0))
-        res_dict["qlow"].append(np.quantile(res, 0.25, axis=0))
-        res_dict["qhigh"].append(np.quantile(res, 0.75, axis=0))
-        res_dict["min"].append(np.min(res, axis=0))
-        res_dict["max"].append(np.max(res, axis=0))
+
     for iteration in iterations:
         rets = []
         costs = []
@@ -35,7 +38,6 @@ def get_results(base_dir, seeds, iterations):
                 succs.append(np.mean(success))
             
         if len(rets) > 0:
-            print(rets, costs, succs)
             update_results(ret_dict, np.array(rets))
             update_results(cost_dict, np.array(costs))
             update_results(succ_dict, np.array(succs))
@@ -94,11 +96,14 @@ def plot_results(base_log_dir, num_updates_per_iteration, seeds, env, setting, a
         alg_exp_mid[cur_algo] = expected_return_mid[-1]
 
         axes[0].plot(iterations_step, expected_return_mid, color=color, linewidth=2.0, label=f"{label}",marker=".")
-        axes[0].fill_between(iterations_step, expected_return_qlow, expected_return_qhigh, color=color, alpha=0.4)
+        # axes[0].fill_between(iterations_step, expected_return_qlow, expected_return_qhigh, color=color, alpha=0.4)
+        axes[0].fill_between(iterations_step, expected_return_min, expected_return_max, color=color, alpha=0.4)
         axes[1].plot(iterations_step, expected_cum_cost_mid, color=color, linewidth=2.0, marker=".")
-        axes[1].fill_between(iterations_step, expected_cum_cost_qlow, expected_cum_cost_qhigh, color=color, alpha=0.4)
+        # axes[1].fill_between(iterations_step, expected_cum_cost_qlow, expected_cum_cost_qhigh, color=color, alpha=0.4)
+        axes[1].fill_between(iterations_step, expected_cum_cost_min, expected_cum_cost_max, color=color, alpha=0.4)
         axes[2].plot(iterations_step, expected_success_mid, color=color, linewidth=2.0, marker=".")
-        axes[2].fill_between(iterations_step, expected_success_qlow, expected_success_qhigh, color=color, alpha=0.4)
+        # axes[2].fill_between(iterations_step, expected_success_qlow, expected_success_qhigh, color=color, alpha=0.4)
+        axes[2].fill_between(iterations_step, expected_success_min, expected_success_max, color=color, alpha=0.4)
 
     for i, ax in enumerate(axes):
         ax.ticklabel_format(axis='x', style='sci', scilimits=(5, 6), useMathText=True)
@@ -152,30 +157,35 @@ def main():
     num_updates_per_iteration = 5
     seeds = [str(i) for i in range(1, 4)]
     env = "safety_point_mass_2d_narrow"
-    figname_extra = "_KL_EPS=0.5_training"
+    figname_extra = "_KL_EPS=1.0_training"
 
     algorithms = {
         "safety_point_mass_2d_narrow": {
-            "SPDL": {
+            "SPDL_D=5.0": {
                 "algorithm": "self_paced",
-                "label": "SPDL",
-                # "model": "ppo_DELTA=30.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
-                "model": "PPO_DELTA=40.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=0.5",
+                "label": "SPDL_D=5.0",
+                "model": "PPO_DELTA=5.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
                 "color": "blue",
             },
-            "SPDL-Lag": {
+            "SPDL_D=10.0": {
                 "algorithm": "self_paced",
-                "label": "SPDL-Lag",
-                "model": "PPOLag_DELTA=40.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=0.5",
+                "label": "SPDL_D=10.0",
+                "model": "PPO_DELTA=10.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
+                "color": "green",
+            },
+            "SPDL_D=20.0": {
+                "algorithm": "self_paced",
+                "label": "SPDL_D=20.0",
+                "model": "PPO_DELTA=20.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
                 "color": "red",
             },
-        }
+        },
     }
 
     settings = {
         "safety_point_mass_2d_narrow":{
-            "num_iters": 1000,
-            "steps_per_iter": 4000,
+            "num_iters": 150,
+            "steps_per_iter": 2000,
             "fontsize": 16,
             "figsize": (10, 10),
             "bbox_to_anchor": (.5, 1.05),

@@ -1,42 +1,75 @@
 import os
 import sys
 import math
-import gym
+import torch
 import numpy as np
+import gymnasium
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 from matplotlib import ticker
 from matplotlib.patches import Rectangle
-from stable_baselines3.ppo import PPO
 from pathlib import Path
 sys.path.insert(1, os.path.join(sys.path[0], '..'))
 import deep_sprl.environments
-
+from omnisafe.models.actor import ActorBuilder
+from omnisafe.common import Normalizer
 os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 
 def rollout_policy(policy, env):
-    obs = env.reset()
-    done = False
+    obs, info = env.reset()
+    terminated = False
+    truncated = False
     observations = []
     actions = []
     rewards = []
     costs = []
     success = []
-    while not done:
-        obs_ = np.concatenate((obs, env.context[:-1]))
-        action = policy(obs_)
-        obs, reward, done, info = env.step(action)
-        observations.append(obs)
-        actions.append(action)
-        rewards.append(reward)
-        costs.append(info["cost"])
-        success.append(info["success"]*1)
+    while not terminated and not truncated:
+        with torch.no_grad():
+            action = policy(obs)
+        obs, reward, cost, terminated, truncated, info = env.step(action)
+        observations.append(obs.detach().numpy())
+        actions.append(action.detach().numpy())
+        rewards.append(reward.detach().numpy())
+        costs.append(cost.detach().numpy())
+        success.append(info["success"].detach().numpy()*1)
     return np.array(observations), np.array(actions), np.array(rewards), np.array(costs), np.array(success)
 
-def load_policy(env, algo, policy_path, device='cpu'):
-    if os.path.exists(policy_path):
-        policy = algo.load(policy_path, device=device)
-        return lambda x: policy.predict(x, state=None, deterministic=True)[0]
+def load_policy(model_path, exp, device='cpu'):
+    if os.path.exists(model_path):
+        custom_cfgs = exp.create_learner_params()
+        actor_builder = ActorBuilder(
+            obs_space=exp.eval_env._observation_space,
+            act_space=exp.eval_env._action_space,
+            hidden_sizes=custom_cfgs['model_cfgs']['actor']['hidden_sizes'],
+            activation=custom_cfgs['model_cfgs']['actor']['activation'],
+            weight_initialization_mode=custom_cfgs['model_cfgs']['weight_initialization_mode'],
+        )
+        actor = actor_builder.build_actor(custom_cfgs['model_cfgs']['actor_type'])
+        model_params = torch.load(model_path, map_location=device)
+        actor.load_state_dict(model_params['pi'])
+        old_min_action = torch.tensor(
+            exp.eval_env._action_space.low,
+            dtype=torch.float32,
+            device=device,
+        )
+        old_max_action = torch.tensor(
+            exp.eval_env._action_space.high,
+            dtype=torch.float32,
+            device=device,
+        )
+        min_action = torch.zeros_like(old_min_action) - 1
+        max_action = torch.zeros_like(old_min_action) + 1
+        def descale_action(scaled_act):
+            return old_min_action + (old_max_action - old_min_action) * (
+                scaled_act - min_action) / (max_action - min_action)
+        
+        if "obs_normalizer" in model_params:
+            normalizer = Normalizer(exp.eval_env._observation_space.shape).to(device)
+            normalizer.load_state_dict(model_params["obs_normalizer"])
+            return lambda obs: descale_action(actor.predict(normalizer.normalize(obs), deterministic=False))
+        else:
+            return lambda obs: descale_action(actor.predict(obs, deterministic=False))
     else:
         return None
         # raise ValueError(f"No policy found at path: {policy_path}")
@@ -44,7 +77,7 @@ def load_policy(env, algo, policy_path, device='cpu'):
 def load_eval_contexts(experiment_name):
     return np.load(os.path.join(Path(os.getcwd()).parent, "eval_contexts", f"{experiment_name}_eval_contexts.npy"))
 
-def plot_trajectories(base_log_dir, policy_from_iteration, seeds, env_name, experiment_name, rl_algorithm,
+def plot_trajectories(base_log_dir, policy_from_iteration, seeds, exp, env_name, experiment_name,
                       discount_factor, setting, algorithms, figname_extra):
     plt.rcParams['font.family'] = 'serif'
     plt.rcParams['font.serif'] = ['Times New Roman'] + plt.rcParams['font.serif']
@@ -54,7 +87,6 @@ def plot_trajectories(base_log_dir, policy_from_iteration, seeds, env_name, expe
     figsize = setting["figsize"]
     bbox_to_anchor = setting["bbox_to_anchor"]
 
-    env = gym.make(env_name)
     context = load_eval_contexts(experiment_name)[0]
 
     fig, axes = plt.subplots(1, len(seeds), figsize=figsize, constrained_layout=True)
@@ -83,16 +115,17 @@ def plot_trajectories(base_log_dir, policy_from_iteration, seeds, env_name, expe
         model = algorithms[algo]["model"]
         color = algorithms[algo]["color"]
         print(algorithm)
-
         for seed_i, seed in enumerate(seeds):
-            policy_path = os.path.join(base_log_dir, experiment_name, algorithm, model, f"seed-{seed}", 
-                                       f"iteration-{policy_from_iteration}", "model.zip")
+            omnisafe_dir_file = os.path.join(base_log_dir, "logs", experiment_name, algorithm, model, f"seed-{seed}", "omnisafe_log_dir.txt")
+            with open(omnisafe_dir_file, "r") as f:
+                omnisafe_dir = f.read()
+            policy_path = os.path.join(base_log_dir, omnisafe_dir, "torch_save", f"epoch-{policy_from_iteration}.pt")
             print(policy_path)
-            policy = load_policy(env, rl_algorithm, policy_path)
+            policy = load_policy(model_path=policy_path, exp=exp)
             if policy is None:
                 continue
-            env.set_context(context)
-            obs, acts, rews, costs, succs = rollout_policy(policy, env)
+            exp.eval_env.set_context(context)
+            obs, acts, rews, costs, succs = rollout_policy(policy, exp.eval_env)
             disc_return = np.sum(rews * np.power(discount_factor, np.arange(rews.shape[0])))
             disc_cost = np.sum(costs * np.power(discount_factor, np.arange(costs.shape[0])))
             x, v_x, y, v_y = obs[:, 0], obs[:, 1], obs[:, 2], obs[:, 3]
@@ -100,7 +133,7 @@ def plot_trajectories(base_log_dir, policy_from_iteration, seeds, env_name, expe
             axes[seed_i].quiver(x+4.0, y+4.0, v_x/(10*np.sqrt(v_x**2+v_y**2)), v_y/(10*np.sqrt(v_x**2+v_y**2)),
                                  color=color, alpha=0.5, width=0.01)
             axes[seed_i].text(0.1, 0.1+0.5*algo_i,
-                              f"Return: {disc_return:.2f} || Cost: {disc_cost:.2f}",# || Succ: {np.any(succs)}",
+                              f"Return: {disc_return:.2f} || Cost: {disc_cost:.2f} || Succ: {np.any(succs)}",
                               color=color)
 
     colors = []
@@ -135,65 +168,49 @@ def plot_trajectories(base_log_dir, policy_from_iteration, seeds, env_name, expe
                 )
 
 def main():
-    base_log_dir = os.path.join(Path(os.getcwd()).parent, "logs")
-    policy_from_iteration = 60
+    base_log_dir = Path(os.getcwd()).parent
+    policy_from_iteration = 150
     seeds = [str(i) for i in range(1, 4)]
-    rl_algorithm = PPO
-    experiment_name = "safety_point_mass_2d_2_narrow"
-    env_name = "ContextualSafetyPointMass2D2-v1"
-    figname_extra = "_KL_EPS=1.0"
+    rl_algorithm = "PPO"
+    experiment_name = "safety_point_mass_2d_narrow"
+    env_name = "ContextualSafetyPointMass2D-v0"
+    figname_extra = "_KL_EPS=1.0_D=0"
     discount_factor = 0.99
     
+    if experiment_name[:experiment_name.rfind('_')] == "safety_point_mass_2d":
+        from deep_sprl.experiments import SafetyPointMass2DExperiment
+        exp = SafetyPointMass2DExperiment(base_log_dir="logs", curriculum_name="default", 
+                                          learner_name=rl_algorithm, 
+                                          parameters={"TARGET_TYPE": experiment_name[experiment_name.rfind('_')+1:] },
+                                          seed=1, device="cpu")
+    else:
+        raise ValueError("Invalid environment")
+
+
     algorithms = {
         "safety_point_mass_2d_narrow": {
             "SPDL": {
                 "algorithm": "self_paced",
                 "label": "SPDL",
-                "model": "ppo_DELTA=30.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
+                "model": "PPO_DELTA=0.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
                 "color": "blue",
+            },
+            "SPDL_Lag": {
+                "algorithm": "self_paced",
+                "label": "SPDL_Lag",
+                "model": "PPOLag_DELTA=0.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
+                "color": "green",
+            },
+            "DEF_Lag": {
+                "algorithm": "default",
+                "label": "DEF_Lag",
+                "model": "PPOLag",
+                "color": "red",
             },
             "DEF": {
                 "algorithm": "default",
                 "label": "Default",
-                "model": "ppo",
-                "color": "magenta",
-            },
-        },
-        "safety_point_mass_2d_2_narrow": {
-            "SPDL_d0": {
-                "algorithm": "self_paced",
-                "label": "SPDL_D=0",
-                "model": "ppo_DELTA=0.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
-                "color": "blue",
-            },
-            "SPDL_d10": {
-                "algorithm": "self_paced",
-                "label": "SPDL_D=10",
-                "model": "ppo_DELTA=10.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
-                "color": "cyan",
-            },
-            "SPDL_d20": {
-                "algorithm": "self_paced",
-                "label": "SPDL_D=20",
-                "model": "ppo_DELTA=20.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
-                "color": "olive",
-            },
-            "SPDL_d30": {
-                "algorithm": "self_paced",
-                "label": "SPDL_D=30",
-                "model": "ppo_DELTA=30.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
-                "color": "gold",
-            },
-            "SPDL_d40": {
-                "algorithm": "self_paced",
-                "label": "SPDL_D=40",
-                "model": "ppo_DELTA=40.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
-                "color": "brown",
-            },
-            "DEF": {
-                "algorithm": "default",
-                "label": "Default",
-                "model": "ppo",
+                "model": "PPO",
                 "color": "magenta",
             },
         },
@@ -205,20 +222,15 @@ def main():
             "figsize": (13, 5),
             "bbox_to_anchor": (.1, 1.01),
         },
-        "safety_point_mass_2d_2_narrow":{
-            "fontsize": 10,
-            "figsize": (13, 5),
-            "bbox_to_anchor": (.2, 1.01),
-        },
     }
 
     plot_trajectories(
         base_log_dir=base_log_dir,
         policy_from_iteration=policy_from_iteration,
         seeds=seeds,
+        exp=exp,
         env_name=env_name,
         experiment_name=experiment_name,
-        rl_algorithm=rl_algorithm,
         discount_factor=discount_factor,
         setting=settings[experiment_name],
         algorithms=algorithms[experiment_name],

@@ -33,8 +33,10 @@ class ContextualSafetyPointMass2D(CMDP):
         self._num_envs = num_envs
         self._device = device
         self._action_space = spaces.Box(low=-10., high=10., shape=(2,))
-        self._observation_space = spaces.Box(low=np.array([-self.ROOM_WIDTH/2, -np.inf, -4., -np.inf]),
-                                             high=np.array([self.ROOM_WIDTH/2, np.inf, 4., np.inf]))
+        # self._observation_space = spaces.Box(low=np.array([-self.ROOM_WIDTH/2, -np.inf, -4., -np.inf]),
+        #                                      high=np.array([self.ROOM_WIDTH/2, np.inf, 4., np.inf]))
+        self._observation_space = spaces.Box(low=np.array([-self.ROOM_WIDTH/2, -5.0, -4., -5.0]),
+                                             high=np.array([self.ROOM_WIDTH/2, 5.0, 4., 5.0]))
         self._state = None
         self._timestep = 0
         self._lava_passes = []
@@ -43,8 +45,8 @@ class ContextualSafetyPointMass2D(CMDP):
 
         self._dt = 0.01
         self._friction_param = 0.
-        self._single_lava_pass_cost = 0.1
-
+        self._single_lava_pass_cost = 1.0 # 2.0 # 0.5 # 0.1
+        self._max_distance = torch.sqrt(torch.as_tensor(self.ROOM_WIDTH**2+8**2))
         self.goal_state = torch.as_tensor([self.ROOM_WIDTH/2-0.5, 0., -3.5, 0.0])
 
     def reset(
@@ -108,6 +110,8 @@ class ContextualSafetyPointMass2D(CMDP):
         reward = torch.as_tensor(torch.exp(-r_coeff * 
                                         torch.norm(self.goal_state[0::2] - 
                                                        new_state[0::2], p=2)))
+        # reward = torch.as_tensor(-torch.norm(self.goal_state[0::2] - new_state[0::2], 
+        #                                      p=2)/self._max_distance + 1.0)
         info = {"success": torch.as_tensor(torch.norm(self.goal_state[0::2] - 
                                                           new_state[0::2], p=2) < 0.25),
                 "cost": cost}

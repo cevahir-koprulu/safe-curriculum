@@ -6,7 +6,7 @@ from omnisafe.envs.core import make
 from deep_sprl.experiments.abstract_experiment import AbstractExperiment, Learner
 from deep_sprl.teachers.alp_gmm import ALPGMM, ALPGMMWrapper
 from deep_sprl.teachers.goal_gan import GoalGAN, GoalGANWrapper
-from deep_sprl.teachers.spl import SelfPacedTeacherV2, SelfPacedWrapper#, CurrOT
+from deep_sprl.teachers.spl import ConstrainedSelfPacedTeacherV2, SelfPacedTeacherV2, SelfPacedWrapper#, CurrOT
 from deep_sprl.teachers.dummy_teachers import UniformSampler, DistributionSampler
 from deep_sprl.teachers.dummy_wrapper import DummyWrapper
 from deep_sprl.teachers.abstract_teacher import BaseWrapper
@@ -20,7 +20,9 @@ from scipy.stats import multivariate_normal
 from deep_sprl.environments.safety_point_mass import ContextualSafetyPointMass2D
 
 class SafetyPointMass2DExperiment(AbstractExperiment):
-    PENALTY_COEFFICIENT = {Learner.SAC: 0.0, Learner.PPO: 0.1, Learner.PPOLag: 0.0}
+    PENALTY_COEFFICIENT = {Learner.SAC: 0.0, 
+                           Learner.PPO: 1.0, # 0.1, 
+                           Learner.PPOLag: 0.0}
 
     TARGET_TYPE = "narrow"
     TARGET_MEAN = np.array([ContextualSafetyPointMass2D.ROOM_WIDTH*0.3, 
@@ -54,14 +56,15 @@ class SafetyPointMass2DExperiment(AbstractExperiment):
     STD_LOWER_BOUND = np.array([0.1, 0.1])
     KL_THRESHOLD = 8000.
     KL_EPS = 1.0 # 0.5
-    DELTA = 30.0
+    DELTA = 10.0 # 20.0 # 30.0
+    DELTA_C = 0.0
     METRIC_EPS = 0.5
-    EP_PER_UPDATE = 200 # 100 # 10
-
-    NUM_ITER = 1000 # 500
-    STEPS_PER_ITER = 4000
+    EP_PER_UPDATE = 10 # 20 # 100 # 200
+    
+    NUM_ITER = 150 # 250 # 1000 # 500
+    STEPS_PER_ITER = 2000 # 4000
     DISCOUNT_FACTOR = 0.99
-    LAM = 0.95 # 0.99
+    LAM = 0.99 # 0.95
 
     # ACL Parameters [found after search over [0.05, 0.1, 0.2] x [0.01, 0.025, 0.05]]
     ACL_EPS = 0.2
@@ -111,7 +114,7 @@ class SafetyPointMass2DExperiment(AbstractExperiment):
                               update_size=self.GG_FIT_RATE[self.learner], n_rollouts=2, goid_lb=0.25, goid_ub=0.75,
                               p_old=self.GG_P_OLD[self.learner], pretrain_samples=samples)
             teacher_id = "GoalGAN"
-        elif self.curriculum.self_paced() or self.curriculum.wasserstein():
+        elif self.curriculum.self_paced() or self.curriculum.wasserstein() or self.curriculum.constrained_self_paced():
             teacher = self.create_self_paced_teacher(with_callback=False)
             teacher_id = "SelfPaced"
             special_kwargs['episodes_per_update'] = self.EP_PER_UPDATE
@@ -191,7 +194,7 @@ class SafetyPointMass2DExperiment(AbstractExperiment):
                 'algo_cfgs': {
                     'steps_per_epoch': self.STEPS_PER_ITER, # to eval, log, actor scheduler step
                     'update_iters': 10, # gradient steps
-                    'batch_size': 64, # 128,
+                    'batch_size': 128, # 64,
                     'target_kl': 0.02,
                     'entropy_coef': 0.0,
                     'reward_normalize': False,
@@ -199,9 +202,9 @@ class SafetyPointMass2DExperiment(AbstractExperiment):
                     'obs_normalize': True,
                     'kl_early_stop': True,
                     'use_max_grad_norm': True,
-                    'max_grad_norm': 40.0, # 0.5,
+                    'max_grad_norm': 0.5, # 40.0,
                     'use_critic_norm': True,
-                    'critic_norm_coef': 0.001, #  0.5,
+                    'critic_norm_coef':  0.5, # 0.001,
                     'gamma': self.DISCOUNT_FACTOR,
                     'cost_gamma': self.DISCOUNT_FACTOR,
                     'lam': self.LAM,
@@ -258,6 +261,16 @@ class SafetyPointMass2DExperiment(AbstractExperiment):
                     'exploration_noise_anneal': False,
                     'std_range': [0.5, 0.1],
                 },
+                'lagrange_cfgs': {
+                    # Tolerance of constraint violation
+                    'cost_limit': self.DELTA_C,
+                    # Initial value of lagrangian multiplier
+                    'lagrangian_multiplier_init': 0.001,
+                    # Learning rate of lagrangian multiplier
+                    'lambda_lr': 0.035,
+                    # Type of lagrangian optimizer
+                    'lambda_optimizer': "Adam",
+                },
             }
         }
 
@@ -281,12 +294,12 @@ class SafetyPointMass2DExperiment(AbstractExperiment):
             'model_cfgs':  {
                 'weight_initialization_mode': "kaiming_uniform",
                 'actor': {
-                    'hidden_sizes': [64, 64], # [128, 128, 128],
+                    'hidden_sizes': [128, 128, 128], # [64, 64], 
                     'activation': "tanh",
                     'lr': 3e-4,
                 },
                 'critic': {
-                    'hidden_sizes': [64, 64], # [128, 128, 128],
+                    'hidden_sizes':  [128, 128, 128], # [64, 64],
                     'activation': "tanh",
                     'lr': 3e-4,
                 },
@@ -323,6 +336,11 @@ class SafetyPointMass2DExperiment(AbstractExperiment):
                                       np.diag(np.square([self.INIT_VAR, self.INIT_VAR])), bounds, self.DELTA, max_kl=self.KL_EPS,
                                       std_lower_bound=self.STD_LOWER_BOUND.copy(), kl_threshold=self.KL_THRESHOLD,
                                       dist_type=self.DIST_TYPE)
+        elif self.curriculum.constrained_self_paced():
+            return ConstrainedSelfPacedTeacherV2(self.target_log_likelihood, self.target_sampler, self.INITIAL_MEAN.copy(),
+                                                    np.diag(np.square([self.INIT_VAR, self.INIT_VAR])), bounds, self.DELTA,
+                                                    cost_ub=self.DELTA_C, max_kl=self.KL_EPS, std_lower_bound=self.STD_LOWER_BOUND.copy(),
+                                                    kl_threshold=self.KL_THRESHOLD, dist_type=self.DIST_TYPE)
         else:
             raise NotImplementedError("Invalid self-paced teacher type: ", str(self.curriculum()))
             init_samples = np.random.uniform(self.LOWER_CONTEXT_BOUNDS, self.UPPER_CONTEXT_BOUNDS, size=(200, 2))
@@ -355,7 +373,9 @@ class SafetyPointMass2DExperiment(AbstractExperiment):
             context = eval_contexts[i, :]
             for j in range(num_run):
                 self.eval_env.set_context(context)
+                # print(f"Context: {context} || Eval env context: {self.eval_env.get_context()}")
                 obs, info = self.eval_env.reset()
+                # print(f"Initial obs: {obs}")
                 t = 0
                 terminated = False
                 truncated = False
@@ -365,8 +385,9 @@ class SafetyPointMass2DExperiment(AbstractExperiment):
                 while not (terminated or truncated):
                     t +=1 
                     with torch.no_grad():
-                        action = model.predict(obs, deterministic=False)
+                        action = model(obs.to(self.device))
                     obs, reward, cost, terminated, truncated, info = self.eval_env.step(action)
+                    # print(f"Step: {t} || Action: {action} || Obs: {obs} || Reward: {reward} || Cost: {cost} || Terminated: {terminated} || Truncated: {truncated} || Info: {info}")
                     success.append(info["success"]*1)
                     costs.append(cost)
                     returns.append(reward)
@@ -374,6 +395,7 @@ class SafetyPointMass2DExperiment(AbstractExperiment):
                     num_succ_eps_per_c[i] += 1. / num_run
                 all_costs[i] += np.cumprod((np.ones(200)*self.DISCOUNT_FACTOR))/self.DISCOUNT_FACTOR@np.array(costs) / num_run
                 all_returns[i] += np.cumprod((np.ones(200)*self.DISCOUNT_FACTOR))/self.DISCOUNT_FACTOR@np.array(returns) / num_run
+            # input("END OF EPISODE")
         print(f"Successful Eps: {100 * np.mean(num_succ_eps_per_c)}%")
         print(f"Average Cost: {np.mean(all_costs)}")
         # input()
@@ -388,10 +410,10 @@ class SafetyPointMass2DExperiment(AbstractExperiment):
         num_run = 1 
 
         model = self.learner.load_for_evaluation(model_path=model_path, 
-                                                 obs_space=self.eval_env._observation_space,
-                                                 act_space=self.eval_env._action_space, 
-                                                 custom_cfgs=self.create_learner_params(), 
-                                                 device=self.device)
+                                                            obs_space=self.eval_env._observation_space,
+                                                            act_space=self.eval_env._action_space, 
+                                                            custom_cfgs=self.create_learner_params(), 
+                                                            device=self.device)
         num_contexts = training_contexts.shape[0]
         num_succ_eps_per_c = np.zeros(num_contexts)
         all_costs = np.zeros(num_contexts)
@@ -410,7 +432,7 @@ class SafetyPointMass2DExperiment(AbstractExperiment):
                 while not (terminated or truncated):
                     t +=1 
                     with torch.no_grad():
-                        action = model.predict(obs, deterministic=False)
+                        action = model(obs.to(self.device))
                     obs, reward, cost, terminated, truncated, info = self.eval_env.step(action)
                     success.append(info["success"]*1)
                     costs.append(cost)
@@ -419,6 +441,7 @@ class SafetyPointMass2DExperiment(AbstractExperiment):
                     num_succ_eps_per_c[i] += 1. / num_run
                 all_costs[i] += np.cumprod((np.ones(200)*self.DISCOUNT_FACTOR))/self.DISCOUNT_FACTOR@np.array(costs) / num_run
                 all_returns[i] += np.cumprod((np.ones(200)*self.DISCOUNT_FACTOR))/self.DISCOUNT_FACTOR@np.array(returns) / num_run
+            # input("END OF EPISODE")
         print(f"Successful Eps: {100 * np.mean(num_succ_eps_per_c)}%")
         print(f"Average Cost: {np.mean(all_costs)}")
         disc_rewards = self.eval_env.get_reward_buffer()

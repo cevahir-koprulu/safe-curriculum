@@ -9,6 +9,7 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from deep_sprl.util.parameter_parser import create_override_appendix
 from omnisafe.models.actor import ActorBuilder
+from omnisafe.common import Normalizer
 
 def set_seed(seed):
     random.seed(seed)
@@ -25,6 +26,7 @@ class CurriculumType(Enum):
     ACL = 7
     PLR = 8
     VDS = 9
+    ConstrainedSelfPaced = 10
 
     def __str__(self):
         if self.goal_gan():
@@ -43,6 +45,8 @@ class CurriculumType(Enum):
             return "plr"
         elif self.vds():
             return "vds"
+        elif self.constrained_self_paced():
+            return "constrained_self_paced"
         else:
             return "random"
 
@@ -72,6 +76,9 @@ class CurriculumType(Enum):
 
     def vds(self):
         return self.value == CurriculumType.VDS.value
+    
+    def constrained_self_paced(self):
+        return self.value == CurriculumType.ConstrainedSelfPaced.value
 
     @staticmethod
     def from_string(string):
@@ -93,6 +100,8 @@ class CurriculumType(Enum):
             return CurriculumType.PLR
         elif string == str(CurriculumType.VDS):
             return CurriculumType.VDS
+        elif string == str(CurriculumType.ConstrainedSelfPaced):
+            return CurriculumType.ConstrainedSelfPaced
         else:
             raise RuntimeError("Invalid string: '" + string + "'")
 
@@ -166,7 +175,28 @@ class Learner(Enum):
         actor = actor_builder.build_actor(custom_cfgs['model_cfgs']['actor_type'])
         model_params = torch.load(model_path, map_location=device)
         actor.load_state_dict(model_params['pi'])
-        return actor
+        old_min_action = torch.tensor(
+            act_space.low,
+            dtype=torch.float32,
+            device='cpu',
+        )
+        old_max_action = torch.tensor(
+            act_space.high,
+            dtype=torch.float32,
+            device='cpu',
+        )
+        min_action = torch.zeros_like(old_min_action, device='cpu') - 1
+        max_action = torch.zeros_like(old_min_action, device='cpu') + 1
+        def descale_action(scaled_act):
+            return old_min_action + (old_max_action - old_min_action) * (
+                scaled_act - min_action) / (max_action - min_action)
+        
+        if "obs_normalizer" in model_params:
+            normalizer = Normalizer(obs_space.shape)
+            normalizer.load_state_dict(model_params["obs_normalizer"])
+            return lambda obs: descale_action(actor.predict(normalizer.normalize(obs), deterministic=False))
+        else:
+            return lambda obs: descale_action(actor.predict(obs, deterministic=False))
 
     @staticmethod
     def from_string(string):
@@ -189,7 +219,8 @@ class AbstractExperiment(ABC):
                      CurriculumType.Default: [],
                      CurriculumType.ACL: ["ACL_EPS", "ACL_ETA"],
                      CurriculumType.PLR: ["PLR_REPLAY_RATE", "PLR_BETA", "PLR_RHO"],
-                     CurriculumType.VDS: ["VDS_NQ", "VDS_LR", "VDS_EPOCHS", "VDS_BATCHES"]}
+                     CurriculumType.VDS: ["VDS_NQ", "VDS_LR", "VDS_EPOCHS", "VDS_BATCHES"],
+                    CurriculumType.ConstrainedSelfPaced: ["DELTA_C", "DELTA", "KL_EPS", "DIST_TYPE", "INIT_VAR"]}
 
     def __init__(self, base_log_dir, curriculum_name, learner_name, parameters, seed, device, view=False):
         self.device = device
@@ -239,9 +270,8 @@ class AbstractExperiment(ABC):
                              "GG_P_OLD": float, "DELTA": float, "EPS": float, "MAZE_TYPE": str, "ACL_EPS": float,
                              "ACL_ETA": float, "PLR_REPLAY_RATE": float, "PLR_BETA": float, "PLR_RHO": float,
                              "VDS_NQ": int, "VDS_LR": float, "VDS_EPOCHS": int, "VDS_BATCHES": int,
-                             "DIST_TYPE": str, "TARGET_TYPE": str, "KL_EPS": float,
-                             "RALPH_IN": float, "RALPH": float, "RALPH_SCH": int, 
-                             "EP_PER_UPDATE": int, "EP_PER_AUX_UPDATE": int, "INIT_VAR":float,
+                             "DIST_TYPE": str, "TARGET_TYPE": str, "KL_EPS": float, 
+                             "EP_PER_UPDATE": int, "INIT_VAR":float, "DELTA_C": float,
         }
         for key in sorted(self.parameters.keys()):
             if key not in allowed_overrides:
@@ -353,7 +383,8 @@ class AbstractExperiment(ABC):
                 model_path = os.path.join(omnisafe_log_dir, 'torch_save', saved_model)
                 training_contexts = np.array([teacher.sample() for _ in range(num_contexts)])
                 performance_log_dir = os.path.join(iteration_log_dir, "performance_training.npy")
-                if not os.path.exists(performance_log_dir):
+                # if not os.path.exists(performance_log_dir):
+                if True:
                     disc_rewards, successful_eps, costs = self.evaluate_training(
                         model_path=model_path,
                         training_contexts=training_contexts,

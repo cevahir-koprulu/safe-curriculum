@@ -8,7 +8,9 @@ def main():
     parser = argparse.ArgumentParser("Safe curriculum learning experiment runner")
     parser.add_argument("--base_log_dir", type=str, default="logs")
     parser.add_argument("--type", type=str, default="self_paced",
-                        choices=["default", "random", "self_paced", "wasserstein", "alp_gmm",
+                        choices=["default", "random", 
+                                 "constrained_self_paced", "self_paced", 
+                                 "wasserstein", "alp_gmm",
                                  "goal_gan", "acl", "plr", "vds"])
     parser.add_argument("--learner", type=str, default="PPO", choices=["PPO", "SAC", "PPOLag"])
     parser.add_argument("--env", type=str, default="safety_point_mass_2d",

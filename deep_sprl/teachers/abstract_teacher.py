@@ -165,16 +165,19 @@ class BaseWrapper(CMDP):
             self, 
             seed: int = None,
             options: Dict[str, Any] = None):
+        # input("RESET!")
         if self.cur_context is None:
+            # print("Sampling context")
             self.cur_context = self.teacher.sample()
         if self.context_post_processing is None:
             self.processed_context = self.cur_context.copy()
         else:
             self.processed_context = self.context_post_processing(self.cur_context.copy())
+        # print("Context:", self.cur_context)
         self._env.context = self.processed_context.copy()
         obs, info = self._env.reset(seed=seed, options=options)
         obs = torch.cat((obs, torch.as_tensor(self.processed_context))).float()
-
+        # print("Initial obs:", obs)
         self.cur_initial_state = obs.detach().clone()
         # input("***** RESET *****")
         # print("Context:", self.cur_context, "Obs:", obs, "Info:", info)
@@ -183,11 +186,22 @@ class BaseWrapper(CMDP):
     def set_context(self, context):
         self.cur_context = context
 
+    def get_context(self):
+        return self.cur_context
+
     def render(self, mode='human'):
         return self._env.render(mode=mode)
 
     def update(self, step):
         obs, reward, cost, terminated, truncated, info = step
+        if "final_observation" in info:
+            info["final_observation"] = torch.cat((info["final_observation"], torch.as_tensor(self.processed_context))).float()
+        
+        # These keys are used to log EpRet and EpCost
+        # EpCost is used in the Lagrangian
+        # info["original_reward"] = self.cur_disc * reward
+        # info["original_cost"] = self.cur_disc * cost
+
         self.undiscounted_reward += reward
         self.discounted_reward += self.cur_disc * reward
         self.undiscounted_cost += cost

@@ -6,7 +6,8 @@ from omnisafe.envs.core import make
 from deep_sprl.experiments.abstract_experiment import AbstractExperiment, Learner
 from deep_sprl.teachers.alp_gmm import ALPGMM, ALPGMMWrapper
 from deep_sprl.teachers.goal_gan import GoalGAN, GoalGANWrapper
-from deep_sprl.teachers.spl import ConstrainedSelfPacedTeacherV2, SelfPacedTeacherV2, SelfPacedWrapper#, CurrOT
+from deep_sprl.teachers.spl import ConstrainedSelfPacedTeacherV2, SelfPacedTeacherV2, \
+    ConstrainedSelfPacedWrapper, SelfPacedWrapper#, CurrOT
 from deep_sprl.teachers.dummy_teachers import UniformSampler, DistributionSampler
 from deep_sprl.teachers.dummy_wrapper import DummyWrapper
 from deep_sprl.teachers.abstract_teacher import BaseWrapper
@@ -56,7 +57,7 @@ class SafetyPointMass2DExperiment(AbstractExperiment):
     STD_LOWER_BOUND = np.array([0.1, 0.1])
     KL_THRESHOLD = 8000.
     KL_EPS = 1.0 # 0.5
-    DELTA = 10.0 # 20.0 # 30.0
+    DELTA = 30.0 # 20.0 # 10.0
     DELTA_C = 0.0
     METRIC_EPS = 0.5
     EP_PER_UPDATE = 10 # 20 # 100 # 200
@@ -64,7 +65,7 @@ class SafetyPointMass2DExperiment(AbstractExperiment):
     NUM_ITER = 150 # 250 # 1000 # 500
     STEPS_PER_ITER = 2000 # 4000
     DISCOUNT_FACTOR = 0.99
-    LAM = 0.99 # 0.95
+    LAM = 0.95 # 0.99 
 
     # ACL Parameters [found after search over [0.05, 0.1, 0.2] x [0.01, 0.025, 0.05]]
     ACL_EPS = 0.2
@@ -114,9 +115,13 @@ class SafetyPointMass2DExperiment(AbstractExperiment):
                               update_size=self.GG_FIT_RATE[self.learner], n_rollouts=2, goid_lb=0.25, goid_ub=0.75,
                               p_old=self.GG_P_OLD[self.learner], pretrain_samples=samples)
             teacher_id = "GoalGAN"
-        elif self.curriculum.self_paced() or self.curriculum.wasserstein() or self.curriculum.constrained_self_paced():
+        elif self.curriculum.self_paced() or self.curriculum.wasserstein():
             teacher = self.create_self_paced_teacher(with_callback=False)
             teacher_id = "SelfPaced"
+            special_kwargs['episodes_per_update'] = self.EP_PER_UPDATE
+        elif self.curriculum.constrained_self_paced():
+            teacher = self.create_self_paced_teacher(with_callback=True)
+            teacher_id = "ConstrainedSelfPaced"
             special_kwargs['episodes_per_update'] = self.EP_PER_UPDATE
         elif self.curriculum.acl():
             bins = 50
@@ -193,8 +198,8 @@ class SafetyPointMass2DExperiment(AbstractExperiment):
             Learner.PPO:  {
                 'algo_cfgs': {
                     'steps_per_epoch': self.STEPS_PER_ITER, # to eval, log, actor scheduler step
-                    'update_iters': 10, # gradient steps
-                    'batch_size': 128, # 64,
+                    'update_iters': 4, #  10, # gradient steps
+                    'batch_size': 64, # 128, 
                     'target_kl': 0.02,
                     'entropy_coef': 0.0,
                     'reward_normalize': False,
@@ -202,9 +207,9 @@ class SafetyPointMass2DExperiment(AbstractExperiment):
                     'obs_normalize': True,
                     'kl_early_stop': True,
                     'use_max_grad_norm': True,
-                    'max_grad_norm': 0.5, # 40.0,
+                    'max_grad_norm': 40.0, # 0.5, 
                     'use_critic_norm': True,
-                    'critic_norm_coef':  0.5, # 0.001,
+                    'critic_norm_coef': 0.001, # 0.5,
                     'gamma': self.DISCOUNT_FACTOR,
                     'cost_gamma': self.DISCOUNT_FACTOR,
                     'lam': self.LAM,
@@ -229,8 +234,8 @@ class SafetyPointMass2DExperiment(AbstractExperiment):
             Learner.PPOLag:  {
                 'algo_cfgs': {
                     'steps_per_epoch': self.STEPS_PER_ITER, # to eval, log, actor scheduler step
-                    'update_iters': 10, # gradient steps
-                    'batch_size': 128,
+                    'update_iters': 4, # 10, # gradient steps
+                    'batch_size': 64, # 128,
                     'target_kl': 0.02,
                     'entropy_coef': 0.0,
                     'reward_normalize': False,
@@ -238,9 +243,9 @@ class SafetyPointMass2DExperiment(AbstractExperiment):
                     'obs_normalize': True,
                     'kl_early_stop': True,
                     'use_max_grad_norm': True,
-                    'max_grad_norm': 0.5,
+                    'max_grad_norm': 40.0, # 0.5,
                     'use_critic_norm': True,
-                    'critic_norm_coef': 0.5, # 0.001,
+                    'critic_norm_coef': 0.001, # 0.5,
                     'gamma': self.DISCOUNT_FACTOR,
                     'cost_gamma': self.DISCOUNT_FACTOR,
                     'lam': self.LAM,
@@ -294,12 +299,12 @@ class SafetyPointMass2DExperiment(AbstractExperiment):
             'model_cfgs':  {
                 'weight_initialization_mode': "kaiming_uniform",
                 'actor': {
-                    'hidden_sizes': [128, 128, 128], # [64, 64], 
+                    'hidden_sizes': [64, 64], # [128, 128, 128],
                     'activation': "tanh",
                     'lr': 3e-4,
                 },
                 'critic': {
-                    'hidden_sizes':  [128, 128, 128], # [64, 64],
+                    'hidden_sizes': [64, 64], # [128, 128, 128],
                     'activation': "tanh",
                     'lr': 3e-4,
                 },

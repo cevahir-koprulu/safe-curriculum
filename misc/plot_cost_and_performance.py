@@ -156,20 +156,32 @@ def main():
     num_updates_per_iteration = 5
     seeds = [str(i) for i in range(1, 4)]
     env = "safety_point_mass_2d_narrow"
-    figname_extra = "KL_EPS=1.0_D=0"
+    figname_extra = "KL_EPS=1.0"
 
     algorithms = {
         "safety_point_mass_2d_narrow": {
+            "CSPDL": {
+                "algorithm": "constrained_self_paced",
+                "label": "CSPDL_D=30",
+                "model": "PPO_DELTA=30.0_DELTA_C=0.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
+                "color": "gray",
+            },
+            "CSPDL2": {
+                "algorithm": "constrained_self_paced",
+                "label": "CSPDL2_D=30",
+                "model": "PPOLag_DELTA=30.0_DELTA_C=0.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
+                "color": "tan",
+            },
             "SPDL": {
                 "algorithm": "self_paced",
-                "label": "SPDL",
-                "model": "PPO_DELTA=0.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
+                "label": "SPDL_D=30",
+                "model": "PPO_DELTA=30.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
                 "color": "blue",
             },
-            "SPDL_Lag": {
+            "SPDL2": {
                 "algorithm": "self_paced",
-                "label": "SPDL_Lag",
-                "model": "PPOLag_DELTA=0.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
+                "label": "SPDL2_D=30",
+                "model": "PPOLag_DELTA=30.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
                 "color": "green",
             },
             "DEF_Lag": {

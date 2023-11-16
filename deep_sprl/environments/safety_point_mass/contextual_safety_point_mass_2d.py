@@ -47,7 +47,7 @@ class ContextualSafetyPointMass2D(CMDP):
         self._friction_param = 0.
         self._single_lava_pass_cost = 1.0 # 2.0 # 0.5 # 0.1
         self._max_distance = torch.sqrt(torch.as_tensor(self.ROOM_WIDTH**2+8**2))
-        self.goal_state = torch.as_tensor([self.ROOM_WIDTH/2-0.5, 0., -3.5, 0.0])
+        self._goal_state = torch.as_tensor([self.ROOM_WIDTH/2-0.5, 0., -3.5, 0.0])
 
     def reset(
             self, 
@@ -58,6 +58,7 @@ class ContextualSafetyPointMass2D(CMDP):
         if seed is not None:
             self.set_seed(seed)
         self._state = torch.as_tensor([-self.ROOM_WIDTH/2+0.5, 0., 3.5, 0.])
+        # print(f"context: {self._context}")
         return self._state, {}
 
     def _step_internal(self, state, action):
@@ -91,9 +92,11 @@ class ContextualSafetyPointMass2D(CMDP):
         if (new_state[2] >= -3.0 and new_state[2] <= -1.0) and (
             new_state[0] <= self.ROOM_WIDTH/2 and new_state[0] >= self._context[1]):
             on_lava = True
+        # print(f"on_lava: {on_lava} || state: {new_state}")
         return new_state, on_lava
 
     def step(self, action):
+        # input(action)
         self._timestep += 1
         new_state = self._state
         num_lava_passes = 0
@@ -106,18 +109,19 @@ class ContextualSafetyPointMass2D(CMDP):
 
         self._state = new_state
         cost = torch.as_tensor(num_lava_passes * self._single_lava_pass_cost)
-        r_coeff = 0.6
-        reward = torch.as_tensor(torch.exp(-r_coeff * 
-                                        torch.norm(self.goal_state[0::2] - 
-                                                       new_state[0::2], p=2)))
-        # reward = torch.as_tensor(-torch.norm(self.goal_state[0::2] - new_state[0::2], 
-        #                                      p=2)/self._max_distance + 1.0)
-        info = {"success": torch.as_tensor(torch.norm(self.goal_state[0::2] - 
+        # r_coeff = 0.6
+        # reward = torch.as_tensor(torch.exp(-r_coeff * 
+        #                                 torch.norm(self._goal_state[0::2] - 
+        #                                                new_state[0::2], p=2)))
+        reward = torch.as_tensor(-torch.norm(self._goal_state[0::2] - new_state[0::2], 
+                                             p=2)/self._max_distance + 1.0)
+        info = {"success": torch.as_tensor(torch.norm(self._goal_state[0::2] - 
                                                           new_state[0::2], p=2) < 0.25),
                 "cost": cost}
         terminated = truncated = torch.as_tensor(self._timestep >= self.MAX_TIME_STEPS)
         if truncated:
             info["final_observation"] = new_state
+        # print(f"state: {new_state}, reward: {reward}, cost: {cost}, info: {info}")
         return new_state, reward, cost, terminated, truncated, info
 
     def render(self):

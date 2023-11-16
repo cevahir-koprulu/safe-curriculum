@@ -252,9 +252,9 @@ class ConstrainedSelfPacedTeacherV2(AbstractTeacher, AbstractConstrainedSelfPace
             with open(os.path.join("opt_errors", "error_" + str(time.time())), "wb") as f:
                 pickle.dump((self.context_dist.get_weights(), contexts, values_r, values_c), f)
             print("Exception occurred during optimization! Storing state and re-raising!")
-            raise e
-            # old_dist_weight = self.context_dist.get_weights().copy()
-            # res = FooResult(fun=objective(old_dist_weight)[0], x=old_dist_weight, message="Exception occurred during optimization!")
+            # raise e
+            old_dist_weight = self.context_dist.get_weights().copy()
+            res = FooResult(fun=objective(old_dist_weight)[0], x=old_dist_weight, message="Exception occurred during optimization!")
 
         # If it was not a success, but the objective value was improved and the bounds are still valid, we still
         # use the result

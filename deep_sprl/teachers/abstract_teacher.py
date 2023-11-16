@@ -91,7 +91,7 @@ class BaseWrapper(CMDP):
         if self.penalty_coeff != 0.:
             self.format += "|  %.2E  |  %.2E  "
         if self.teacher is not None:
-            if str(self.teacher)=="self_paced":
+            if str(self.teacher)=="self_paced" or str(self.teacher)=="constrained_self_paced":
                 context_dim = self.teacher.context_dim
                 text = "| [%.2E"
                 for i in range(0, context_dim - 1):
@@ -133,7 +133,7 @@ class BaseWrapper(CMDP):
                 data_tpl += (mean_rew - self.penalty_coeff * mean_cost,
                              mean_disc_rew - self.penalty_coeff * mean_disc_cost,)
 
-            if str(self.teacher)=="self_paced":
+            if str(self.teacher)=="self_paced" or str(self.teacher)=="constrained_self_paced":
                 context_mean = self.teacher.context_dist.mean()
                 context_std = np.sqrt(np.diag(self.teacher.context_dist.covariance_matrix()))
                 data_tpl += tuple(context_mean.tolist())

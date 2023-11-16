@@ -161,23 +161,17 @@ def main():
 
     algorithms = {
         "safety_point_mass_2d_narrow": {
-            "SPDL_D=5.0": {
+            "SPDL": {
                 "algorithm": "self_paced",
-                "label": "SPDL_D=5.0",
-                "model": "PPO_DELTA=5.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
+                "label": "SPDL_D=30",
+                "model": "PPO_DELTA=30.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
                 "color": "blue",
             },
-            "SPDL_D=10.0": {
+            "SPDL2": {
                 "algorithm": "self_paced",
-                "label": "SPDL_D=10.0",
-                "model": "PPO_DELTA=10.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
+                "label": "SPDL2_D=30",
+                "model": "PPOLag_DELTA=30.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
                 "color": "green",
-            },
-            "SPDL_D=20.0": {
-                "algorithm": "self_paced",
-                "label": "SPDL_D=20.0",
-                "model": "PPO_DELTA=20.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
-                "color": "red",
             },
         },
     }

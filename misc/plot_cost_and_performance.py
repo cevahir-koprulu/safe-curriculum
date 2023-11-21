@@ -35,7 +35,6 @@ def get_results(base_dir, seeds, iterations):
                 rets.append(np.mean(disc_rewards))
                 costs.append(np.mean(cost))
                 succs.append(np.mean(success))
-            
         if len(rets) > 0:
             update_results(ret_dict, np.array(rets))
             update_results(cost_dict, np.array(costs))
@@ -47,6 +46,7 @@ def plot_results(base_log_dir, num_updates_per_iteration, seeds, env, setting, a
     plt.rcParams['font.serif'] = ['Times New Roman'] + plt.rcParams['font.serif']
     plt.rcParams['font.size'] = setting["fontsize"]
 
+    plot_success = setting["plot_success"]
     num_iters = setting["num_iters"]
     steps_per_iter = setting["steps_per_iter"]
     fontsize = setting["fontsize"]
@@ -56,7 +56,7 @@ def plot_results(base_log_dir, num_updates_per_iteration, seeds, env, setting, a
     iterations = np.arange(0, num_iters, num_updates_per_iteration, dtype=int)
     iterations_step = iterations*steps_per_iter
 
-    fig, axes = plt.subplots(3,1, figsize=figsize, constrained_layout=True)
+    fig, axes = plt.subplots(2+int(plot_success),1, figsize=figsize, constrained_layout=True)
     alg_exp_mid = {}
     plt.suptitle("Evaluation wrt target distribution")
 
@@ -86,12 +86,6 @@ def plot_results(base_log_dir, num_updates_per_iteration, seeds, env, setting, a
         expected_cum_cost_min = cost["min"]
         expected_cum_cost_max = cost["max"]
 
-        expected_success_mid = succ["mid"]
-        expected_success_qlow = succ["qlow"]
-        expected_success_qhigh = succ["qhigh"]
-        expected_success_min = succ["min"]
-        expected_success_max = succ["max"]
-
         alg_exp_mid[cur_algo] = expected_return_mid[-1]
 
         axes[0].plot(iterations_step, expected_return_mid, color=color, linewidth=2.0, label=f"{label}",marker=".")
@@ -100,9 +94,15 @@ def plot_results(base_log_dir, num_updates_per_iteration, seeds, env, setting, a
         axes[1].plot(iterations_step, expected_cum_cost_mid, color=color, linewidth=2.0, marker=".")
         # axes[1].fill_between(iterations_step, expected_cum_cost_qlow, expected_cum_cost_qhigh, color=color, alpha=0.4)
         axes[1].fill_between(iterations_step, expected_cum_cost_min, expected_cum_cost_max, color=color, alpha=0.4)
-        axes[2].plot(iterations_step, expected_success_mid, color=color, linewidth=2.0, marker=".")
-        # axes[2].fill_between(iterations_step, expected_success_qlow, expected_success_qhigh, color=color, alpha=0.4)
-        axes[2].fill_between(iterations_step, expected_success_min, expected_success_max, color=color, alpha=0.4)
+        if plot_success:            
+            expected_success_mid = succ["mid"]
+            expected_success_qlow = succ["qlow"]
+            expected_success_qhigh = succ["qhigh"]
+            expected_success_min = succ["min"]
+            expected_success_max = succ["max"]
+            axes[2].plot(iterations_step, expected_success_mid, color=color, linewidth=2.0, marker=".")
+            # axes[2].fill_between(iterations_step, expected_success_qlow, expected_success_qhigh, color=color, alpha=0.4)
+            axes[2].fill_between(iterations_step, expected_success_min, expected_success_max, color=color, alpha=0.4)
 
     for i, ax in enumerate(axes):
         ax.ticklabel_format(axis='x', style='sci', scilimits=(5, 6), useMathText=True)
@@ -155,10 +155,50 @@ def main():
     base_log_dir = os.path.join(Path(os.getcwd()).parent, "logs")
     num_updates_per_iteration = 5
     seeds = [str(i) for i in range(1, 4)]
-    env = "safety_point_mass_2d_narrow"
-    figname_extra = "KL_EPS=1.0"
+    # env = "safety_point_mass_2d_narrow"
+    # figname_extra = "KL_EPS=1.0"
+    env = "safety_cartpole_2d_narrow"
+    figname_extra = "KL_EPS=1.0_D=60"
 
     algorithms = {
+        "safety_cartpole_2d_narrow": {
+            "CSPDL": {
+                "algorithm": "constrained_self_paced",
+                "label": "CSPDL_D=60",
+                "model": "PPO_DELTA=60.0_DELTA_C=0.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
+                "color": "gray",
+            },
+            "CSPDL2": {
+                "algorithm": "constrained_self_paced",
+                "label": "CSPDL2_D=60",
+                "model": "PPOLag_DELTA=60.0_DELTA_C=0.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
+                "color": "tan",
+            },
+            "SPDL": {
+                "algorithm": "self_paced",
+                "label": "SPDL_D=60",
+                "model": "PPO_DELTA=60.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
+                "color": "blue",
+            },
+            "SPDL2": {
+                "algorithm": "self_paced",
+                "label": "SPDL2_D=60",
+                "model": "PPOLag_DELTA=60.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
+                "color": "green",
+            },
+            "DEF_Lag": {
+                "algorithm": "default",
+                "label": "DEF_Lag",
+                "model": "PPOLag",
+                "color": "red",
+            },
+            "DEF": {
+                "algorithm": "default",
+                "label": "Default",
+                "model": "PPO",
+                "color": "magenta",
+            },
+        },
         "safety_point_mass_2d_narrow": {
             "CSPDL": {
                 "algorithm": "constrained_self_paced",
@@ -200,7 +240,26 @@ def main():
     }
 
     settings = {
+        "safety_cartpole_2d_narrow":{
+            "plot_success": False,
+            "num_iters": 100,
+            "steps_per_iter": 2000,
+            "fontsize": 16,
+            "figsize": (10, 6),
+            "bbox_to_anchor": (.5, 1.1),
+            "subplot_settings": {
+                0: {
+                    "ylabel": 'Ave. return',
+                    "ylim": [-10., 100.],
+                },
+                1: {
+                    "ylabel": 'Ave. cum. cost',
+                    "ylim": [-10.0, 100.],
+                },
+            },
+        },
         "safety_point_mass_2d_narrow":{
+            "plot_success": True,
             "num_iters": 150,
             "steps_per_iter": 2000,
             "fontsize": 16,

@@ -374,7 +374,7 @@ class AbstractExperiment(ABC):
         idxs = np.argsort(unsorted_models)
         sorted_models = np.array(omnisafe_saved_models)[idxs].tolist()
         
-        if self.curriculum.self_paced():
+        if self.curriculum.self_paced() or self.curriculum.constrained_self_paced():
             for iteration_dir, saved_model in zip(sorted_iteration_dirs, sorted_models):
                 print(f"Evaluating wrt context distribution in {iteration_dir}")
                 iteration_log_dir = os.path.join(log_dir, iteration_dir)

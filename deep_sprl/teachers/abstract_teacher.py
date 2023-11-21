@@ -190,7 +190,7 @@ class BaseWrapper(CMDP):
         return self.cur_context
 
     def render(self, mode='human'):
-        return self._env.render(mode=mode)
+        return self._env.render()
 
     def update(self, step):
         obs, reward, cost, terminated, truncated, info = step
@@ -223,7 +223,9 @@ class BaseWrapper(CMDP):
                                                      self.undiscounted_cost, self.discounted_cost,
                                                      self.processed_context.copy()))
             self.episodes_counter += 1
-            if self.episodes_counter >= self.episodes_per_update:
+            if self.episodes_counter >= self.episodes_per_update and (
+                self.algorithm_iteration % self.step_divider <= (
+                    self.algorithm_iteration-self.step_length) % self.step_divider):
                 self.episodes_counter = 0
 
             self.undiscounted_reward = 0.

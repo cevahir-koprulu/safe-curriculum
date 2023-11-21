@@ -18,22 +18,28 @@ from deep_sprl.teachers.util import Subsampler
 from deep_sprl.util.utils import update_params
 from scipy.stats import multivariate_normal
 
-from deep_sprl.environments.safety_point_mass import ContextualSafetyPointMass1D
+from deep_sprl.environments.safety_cartpole import ContextualSafetyCartpole2D
 
-class SafetyPointMass1DExperiment(AbstractExperiment):
+class SafetyCartpole2DExperiment(AbstractExperiment):
     PENALTY_COEFFICIENT = {Learner.SAC: 0.0, 
                            Learner.PPO: 1.0, # 0.1, 
                            Learner.PPOLag: 0.0}
 
     TARGET_TYPE = "narrow"
-    TARGET_MEAN = np.array([-ContextualSafetyPointMass1D.ROOM_WIDTH*0.3])
+    TARGET_MEAN = np.array([-ContextualSafetyCartpole2D.X_THRESHOLD*0.5, 
+                            ContextualSafetyCartpole2D.X_THRESHOLD*0.5])
+    # TARGET_MEAN = np.array([-ContextualSafetyCartpole2D.X_THRESHOLD, 
+    #                         ContextualSafetyCartpole2D.X_THRESHOLD])
+    
     TARGET_VARIANCES = {
-        "narrow": np.square(np.diag([.1])),
-        "wide": np.square(np.diag([1.])),
+        "narrow": np.square(np.diag([.1, .1])),
+        "wide": np.square(np.diag([1., 1.])),
     }
 
-    LOWER_CONTEXT_BOUNDS = np.array([-ContextualSafetyPointMass1D.ROOM_WIDTH*0.3])
-    UPPER_CONTEXT_BOUNDS = np.array([ContextualSafetyPointMass1D.ROOM_WIDTH/2])
+    LOWER_CONTEXT_BOUNDS = np.array([-ContextualSafetyCartpole2D.X_THRESHOLD, 
+                                     ContextualSafetyCartpole2D.X_THRESHOLD*0.5])
+    UPPER_CONTEXT_BOUNDS = np.array([-ContextualSafetyCartpole2D.X_THRESHOLD*0.5,
+                                     ContextualSafetyCartpole2D.X_THRESHOLD])
 
     def target_log_likelihood(self, cs):
         return multivariate_normal.logpdf(cs, self.TARGET_MEAN, self.TARGET_VARIANCES[self.TARGET_TYPE])
@@ -45,21 +51,21 @@ class SafetyPointMass1DExperiment(AbstractExperiment):
         return rng.multivariate_normal(self.TARGET_MEAN, self.TARGET_VARIANCES[self.TARGET_TYPE], size=n)
 
     INIT_VAR = 0.1
-    INITIAL_MEAN = np.array([ContextualSafetyPointMass1D.ROOM_WIDTH/2])
-    # INITIAL_VARIANCE = np.diag(np.square([0.1, 0.1]))
+    INITIAL_MEAN = np.array([-ContextualSafetyCartpole2D.X_THRESHOLD, 
+                             ContextualSafetyCartpole2D.X_THRESHOLD])
 
     DIST_TYPE = "gaussian"  # "cauchy"
 
-    STD_LOWER_BOUND = np.array([0.1])
+    STD_LOWER_BOUND = np.array([0.1, 0.1])
     KL_THRESHOLD = 8000.
     KL_EPS = 1.0 # 0.5
-    DELTA = 30.0 # 20.0 # 10.0
+    DELTA = 60.0 # 50.0
     DELTA_C = 0.0
     METRIC_EPS = 0.5
     EP_PER_UPDATE = 10 # 20 # 100 # 200
     
-    NUM_ITER = 150 # 250 # 1000 # 500
-    STEPS_PER_ITER = 2000 # 4000
+    NUM_ITER = 100 #150 
+    STEPS_PER_ITER = 2000
     DISCOUNT_FACTOR = 0.99
     LAM = 0.95 # 0.99 
 
@@ -94,7 +100,7 @@ class SafetyPointMass1DExperiment(AbstractExperiment):
         self.eval_env.initialize_wrapper(**wrapper_kwargs)
 
     def create_environment(self, evaluation=False):
-        env_id = "ContextualSafetyPointMass1D-v0"
+        env_id = "ContextualSafetyCartpole2D-v0"
         special_kwargs = {}
         if evaluation or self.curriculum.default():
             teacher = DistributionSampler(self.target_sampler, self.LOWER_CONTEXT_BOUNDS, self.UPPER_CONTEXT_BOUNDS)
@@ -324,7 +330,7 @@ class SafetyPointMass1DExperiment(AbstractExperiment):
             obs_shape = model.agent._env._env._observation_space.shape
             action_dim = model.agent._env._env._action_space.shape[0]
             state_provider = lambda contexts: np.concatenate(
-                [np.repeat(np.array([ContextualSafetyPointMass1D.ROOM_WIDTH/2-0.5, 0., -3.5, 0.0])[None, :], 
+                [np.repeat(np.array([ContextualSafetyCartpole2D.X_THRESHOLD/2-0.5, 0., -3.5, 0.0])[None, :], 
                            contexts.shape[0], axis=0),
                  contexts], axis=-1)
             model.agent._env._env.teacher.initialize_teacher(obs_shape, action_dim, interface, state_provider)
@@ -334,12 +340,12 @@ class SafetyPointMass1DExperiment(AbstractExperiment):
         bounds = (self.LOWER_CONTEXT_BOUNDS.copy(), self.UPPER_CONTEXT_BOUNDS.copy())
         if self.curriculum.self_paced():
             return SelfPacedTeacherV2(self.target_log_likelihood, self.target_sampler, self.INITIAL_MEAN.copy(),
-                                      np.diag(np.square([self.INIT_VAR])), bounds, self.DELTA, max_kl=self.KL_EPS,
+                                      np.diag(np.square([self.INIT_VAR, self.INIT_VAR])), bounds, self.DELTA, max_kl=self.KL_EPS,
                                       std_lower_bound=self.STD_LOWER_BOUND.copy(), kl_threshold=self.KL_THRESHOLD,
                                       dist_type=self.DIST_TYPE)
         elif self.curriculum.constrained_self_paced():
             return ConstrainedSelfPacedTeacherV2(self.target_log_likelihood, self.target_sampler, self.INITIAL_MEAN.copy(),
-                                                    np.diag(np.square([self.INIT_VAR])), bounds, self.DELTA,
+                                                    np.diag(np.square([self.INIT_VAR, self.INIT_VAR])), bounds, self.DELTA,
                                                     cost_ub=self.DELTA_C, max_kl=self.KL_EPS, std_lower_bound=self.STD_LOWER_BOUND.copy(),
                                                     kl_threshold=self.KL_THRESHOLD, dist_type=self.DIST_TYPE)
         else:
@@ -349,7 +355,7 @@ class SafetyPointMass1DExperiment(AbstractExperiment):
                           wb_max_reuse=1)
 
     def get_env_name(self):
-        return f"safety_point_mass_1d_{self.TARGET_TYPE}"
+        return f"safety_cartpole_2d_{self.TARGET_TYPE}"
 
     def evaluate_learner(self, model_path, eval_type=""):
         num_context = None
@@ -394,8 +400,8 @@ class SafetyPointMass1DExperiment(AbstractExperiment):
                     returns.append(reward)
                 if any(success):
                     num_succ_eps_per_c[i] += 1. / num_run
-                all_costs[i] += np.cumprod((np.ones(200)*self.DISCOUNT_FACTOR))/self.DISCOUNT_FACTOR@np.array(costs) / num_run
-                all_returns[i] += np.cumprod((np.ones(200)*self.DISCOUNT_FACTOR))/self.DISCOUNT_FACTOR@np.array(returns) / num_run
+                all_costs[i] += np.cumprod((np.ones(len(costs))*self.DISCOUNT_FACTOR))/self.DISCOUNT_FACTOR@np.array(costs) / num_run
+                all_returns[i] += np.cumprod((np.ones(len(costs))*self.DISCOUNT_FACTOR))/self.DISCOUNT_FACTOR@np.array(returns) / num_run
             # input("END OF EPISODE")
         print(f"Successful Eps: {100 * np.mean(num_succ_eps_per_c)}%")
         print(f"Average Cost: {np.mean(all_costs)}")
@@ -440,8 +446,8 @@ class SafetyPointMass1DExperiment(AbstractExperiment):
                     returns.append(reward)
                 if any(success):
                     num_succ_eps_per_c[i] += 1. / num_run
-                all_costs[i] += np.cumprod((np.ones(200)*self.DISCOUNT_FACTOR))/self.DISCOUNT_FACTOR@np.array(costs) / num_run
-                all_returns[i] += np.cumprod((np.ones(200)*self.DISCOUNT_FACTOR))/self.DISCOUNT_FACTOR@np.array(returns) / num_run
+                all_costs[i] += np.cumprod((np.ones(len(costs))*self.DISCOUNT_FACTOR))/self.DISCOUNT_FACTOR@np.array(costs) / num_run
+                all_returns[i] += np.cumprod((np.ones(len(costs))*self.DISCOUNT_FACTOR))/self.DISCOUNT_FACTOR@np.array(returns) / num_run
             # input("END OF EPISODE")
         print(f"Successful Eps: {100 * np.mean(num_succ_eps_per_c)}%")
         print(f"Average Cost: {np.mean(all_costs)}")

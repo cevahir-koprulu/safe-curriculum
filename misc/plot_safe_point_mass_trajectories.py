@@ -88,13 +88,23 @@ def plot_trajectories(base_log_dir, policy_from_iteration, seeds, exp, env_name,
     figsize = setting["figsize"]
     bbox_to_anchor = setting["bbox_to_anchor"]
 
-    context = np.array([2.4, -2.4])
-    # context = np.array([-3.5, 3.5])
-    # context = load_eval_contexts(experiment_name)[0]
-    # context = np.array([-4.0, 4.0])
+    if "2D" in env_name:
+        context = np.array([2.4, -2.4])
+        # context = np.array([-3.5, 3.5])
+        # context = load_eval_contexts(experiment_name)[0]
+        # context = np.array([-4.0, 4.0])
 
-    fig, axes = plt.subplots(1, len(seeds), figsize=figsize, constrained_layout=True)
-    plt.suptitle(f"Context: ({context[0]},{context[1]}) || Iteration: {policy_from_iteration}")
+        fig, axes = plt.subplots(1, len(seeds), figsize=figsize, constrained_layout=True)
+        plt.suptitle(f"Context: ({context[0]},{context[1]}) || Iteration: {policy_from_iteration}")
+    elif "1D" in env_name:
+        context = np.array([-2.4])
+        # context = np.array([3.5])
+        # context = load_eval_contexts(experiment_name)[0]
+        # context = np.array([-4.0])
+
+        fig, axes = plt.subplots(1, len(seeds), figsize=figsize, constrained_layout=True)
+        plt.suptitle(f"Context: ({context[0]}) || Iteration: {policy_from_iteration}")
+
     if len(seeds) == 1:
         axes = [axes]
     else:
@@ -102,16 +112,23 @@ def plot_trajectories(base_log_dir, policy_from_iteration, seeds, exp, env_name,
     for ax_i, ax in enumerate(axes):
         ax.set_xlim([0., 8.])
         ax.set_ylim([0., 8.])
-        ax.set_xticks([0.0, context[0]+4.0, context[1]+4.0, 8.0])
         ax.set_yticks([0.0, 8.0])
         ax.set_aspect('equal')
         ax.set_title(f"Seed {seeds[ax_i]}",fontsize=fontsize)
-        lava_1 = Rectangle((0.0, 5.0), context[0]+4.0, 2.0, facecolor="red", alpha=0.5)
-        lava_2 = Rectangle((context[1]+4.0, 1.0), 8.0, 2.0, facecolor="red", alpha=0.5)
-        ax.add_patch(lava_1)
-        ax.add_patch(lava_2)
-        ax.scatter(0.5, 7.5, marker="o", color="black", s=500)
-        ax.scatter(7.5, 0.5, marker="X", color="green", s=500)
+        if "2D" in env_name:
+            ax.set_xticks([0.0, context[0]+4.0, context[1]+4.0, 8.0])
+            lava_1 = Rectangle((0.0, 5.0), context[0]+4.0, 2.0, facecolor="red", alpha=0.5)
+            lava_2 = Rectangle((context[1]+4.0, 1.0), 8.0, 2.0, facecolor="red", alpha=0.5)
+            ax.add_patch(lava_1)
+            ax.add_patch(lava_2)
+            ax.scatter(0.5, 7.5, marker="o", color="black", s=500)
+            ax.scatter(7.5, 0.5, marker="X", color="green", s=500)
+        elif "1D" in env_name:
+            ax.set_xticks([0.0, context[0]+4.0, 8.0])
+            lava = Rectangle((context[0]+4.0, 3.0), 8.0, 2.0, facecolor="red", alpha=0.5)
+            ax.add_patch(lava)
+            ax.scatter(0.5, 7.5, marker="o", color="black", s=500)
+            ax.scatter(7.0, 1.0, marker="X", color="green", s=500)
 
     for algo_i, algo in enumerate(algorithms):
         algorithm = algorithms[algo]["algorithm"]
@@ -164,8 +181,13 @@ def plot_trajectories(base_log_dir, policy_from_iteration, seeds, exp, env_name,
     if not os.path.exists(os.path.join(Path(os.getcwd()).parent, "figures")):
         os.makedirs(os.path.join(Path(os.getcwd()).parent, "figures"))
 
-    figpath = os.path.join(Path(os.getcwd()).parent, "figures", 
+    if "2D" in env_name:
+        figpath = os.path.join(Path(os.getcwd()).parent, "figures", 
                            f"{experiment_name}_{figname}{figname_extra}_c=({context[0]},{context[1]})"+\
+                            f"_iter={policy_from_iteration}.pdf")
+    elif "1D" in env_name:
+        figpath = os.path.join(Path(os.getcwd()).parent, "figures",
+                            f"{experiment_name}_{figname}{figname_extra}_c=({context[0]})"+\
                             f"_iter={policy_from_iteration}.pdf")
     print(figpath)
     plt.savefig(figpath, dpi=500, bbox_inches='tight', 
@@ -177,8 +199,8 @@ def main():
     policy_from_iteration = 150
     seeds = [str(i) for i in range(1, 4)]
     rl_algorithm = "PPOLag"
-    experiment_name = "safety_point_mass_2d_narrow"
-    env_name = "ContextualSafetyPointMass2D-v0"
+    experiment_name = "safety_point_mass_1d_narrow"
+    env_name = "ContextualSafetyPointMass1D-v0"
     figname_extra = "_KL_EPS=1.0"
     discount_factor = 0.99
     
@@ -188,11 +210,55 @@ def main():
                                           learner_name=rl_algorithm, 
                                           parameters={"TARGET_TYPE": experiment_name[experiment_name.rfind('_')+1:]},
                                           seed=1, device="cpu")
+    elif experiment_name[:experiment_name.rfind('_')] == "safety_point_mass_1d":
+        from deep_sprl.experiments import SafetyPointMass1DExperiment
+        exp = SafetyPointMass1DExperiment(base_log_dir="logs", curriculum_name="default", 
+                                          learner_name=rl_algorithm, 
+                                          parameters={"TARGET_TYPE": experiment_name[experiment_name.rfind('_')+1:]},
+                                          seed=1, device="cpu")
     else:
         raise ValueError("Invalid environment")
 
 
     algorithms = {
+        "safety_point_mass_1d_narrow": {
+            "CSPDL": {
+                "algorithm": "constrained_self_paced",
+                "label": "CSPDL_D=30",
+                "model": "PPO_DELTA=30.0_DELTA_C=0.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
+                "color": "gray",
+            },
+            "CSPDL2": {
+                "algorithm": "constrained_self_paced",
+                "label": "CSPDL2_D=30",
+                "model": "PPOLag_DELTA=30.0_DELTA_C=0.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
+                "color": "tan",
+            },
+            "SPDL": {
+                "algorithm": "self_paced",
+                "label": "SPDL_D=30",
+                "model": "PPO_DELTA=30.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
+                "color": "blue",
+            },
+            "SPDL2": {
+                "algorithm": "self_paced",
+                "label": "SPDL2_D=30",
+                "model": "PPOLag_DELTA=30.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
+                "color": "green",
+            },
+            "DEF_Lag": {
+                "algorithm": "default",
+                "label": "DEF_Lag",
+                "model": "PPOLag",
+                "color": "red",
+            },
+            "DEF": {
+                "algorithm": "default",
+                "label": "Default",
+                "model": "PPO",
+                "color": "magenta",
+            },
+        },
         "safety_point_mass_2d_narrow": {
             "CSPDL": {
                 "algorithm": "constrained_self_paced",
@@ -234,6 +300,11 @@ def main():
     }
 
     settings = {
+        "safety_point_mass_1d_narrow":{
+            "fontsize": 10,
+            "figsize": (13, 5),
+            "bbox_to_anchor": (.1, 1.01),
+        },
         "safety_point_mass_2d_narrow":{
             "fontsize": 10,
             "figsize": (13, 5),

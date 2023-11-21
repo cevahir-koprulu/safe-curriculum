@@ -63,7 +63,9 @@ class ConstrainedSelfPacedWrapper(BaseWrapper):
         if hasattr(self.teacher, "on_rollout_end"):
             self.teacher.on_rollout_end(cur_context, ret, cost)
         
-        if len(self.context_buffer) >= self.episodes_per_update:
+        if len(self.context_buffer) >= self.episodes_per_update and (
+                self.algorithm_iteration % self.step_divider <= (
+                    self.algorithm_iteration-self.step_length) % self.step_divider):
             __, contexts, returns, costs = self.context_buffer.read_buffer()
             self.teacher.update_distribution(np.array(contexts), np.array(returns), np.array(costs))
 

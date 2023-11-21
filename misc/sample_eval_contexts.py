@@ -5,6 +5,7 @@ import math
 import numpy as np
 from deep_sprl.experiments.safety_point_mass_2d_experiment import SafetyPointMass2DExperiment
 from deep_sprl.experiments.safety_point_mass_1d_experiment import SafetyPointMass1DExperiment
+from deep_sprl.experiments.safety_cartpole_2d_experiment import SafetyCartpole2DExperiment
 from pathlib import Path
 
 
@@ -33,7 +34,7 @@ def main():
     num_contexts = 10
     eval_context_dir = f"{Path(os.getcwd()).parent}/eval_contexts"
     target_type = "narrow"
-    env = f"safety_point_mass_1d_{target_type}"
+    env = f"safety_cartpole_2d_{target_type}"
     all_contexts = True
     all_contexts_hom = False
     num_per_axis = 20
@@ -50,6 +51,10 @@ def main():
         exp = SafetyPointMass1DExperiment(base_log_dir="logs", curriculum_name="self_paced", 
                                           learner_name="PPO", parameters={"TARGET_TYPE": target_type},
                                           seed=1, device="cpu")
+    elif env[:-len(target_type) - 1] == "safety_cartpole_2d":
+        exp = SafetyCartpole2DExperiment(base_log_dir="logs", curriculum_name="self_paced", 
+                                         learner_name="PPO", parameters={"TARGET_TYPE": target_type},
+                                         seed=1, device="cpu")
     else:
         raise ValueError("Invalid environment")
 

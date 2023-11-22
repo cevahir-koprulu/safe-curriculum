@@ -159,7 +159,7 @@ def main():
     num_updates_per_iteration = 5
     seeds = [str(i) for i in range(1, 4)]
     env = "safety_cartpole_2d_narrow"
-    figname_extra = "_KL_EPS=1.0_D=60_training"
+    figname_extra = "_KL_EPS=1.0_D=60_0.25xth_training"
 
     algorithms = {
         "safety_cartpole_2d_narrow": {
@@ -207,7 +207,7 @@ def main():
     settings = {
         "safety_cartpole_2d_narrow": {
             "plot_success": False,
-            "num_iters": 100,
+            "num_iters": 200,
             "steps_per_iter": 2000,
             "fontsize": 16,
             "figsize": (10, 10),

@@ -1,6 +1,7 @@
 import os
 import sys
 import math
+import pickle
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
@@ -17,50 +18,45 @@ def update_results(res_dict, res):
     res_dict["min"].append(np.min(res, axis=0))
     res_dict["max"].append(np.max(res, axis=0))
 
-def get_results(base_dir, seeds, iterations):
-    ret_dict = {"mid": [], "qlow": [], "qhigh": [], "min": [], "max": []}
-    cost_dict = {"mid": [], "qlow": [], "qhigh": [], "min": [], "max": []}
-    succ_dict = {"mid": [], "qlow": [], "qhigh": [], "min": [], "max": []}
+def load_context_traces(base_dir, seeds, iterations):
+    all_context_traces = {}
     for iteration in iterations:
-        rets = []
-        costs = []
-        succs = []
+        # iter_context_traces = None
+        iter_context_traces = {}
         for seed in seeds:
-            perf_file = os.path.join(base_dir, f"seed-{seed}", f"iteration-{iteration}", "performance.npy")
+            perf_file = os.path.join(base_dir, f"seed-{seed}", f"iteration-{iteration}", "context_trace.pkl")
             if os.path.exists(perf_file):
-                results = np.load(perf_file)
-                disc_rewards = results[:, 1]
-                cost = results[:, -1]
-                success = results[:, -2]
-                rets.append(np.mean(disc_rewards))
-                costs.append(np.mean(cost))
-                succs.append(np.mean(success))
-        if len(rets) > 0:
-            update_results(ret_dict, np.array(rets))
-            update_results(cost_dict, np.array(costs))
-            update_results(succ_dict, np.array(succs))
-    return ret_dict, cost_dict, succ_dict
+                with open(perf_file, "rb") as f:
+                    context_trace = pickle.load(f)[-1]
+                    # if iter_context_traces is None:
+                    #     iter_context_traces = context_trace
+                    # else:
+                    #     iter_context_traces = np.vstack((iter_context_traces, context_trace))
+                    iter_context_traces[seed] = np.array(context_trace)
+        if iter_context_traces is not None:
+            all_context_traces[iteration] = iter_context_traces
+    return all_context_traces
 
 def plot_results(base_log_dir, num_updates_per_iteration, seeds, env, setting, algorithms, figname_extra):
     plt.rcParams['font.family'] = 'serif'
     plt.rcParams['font.serif'] = ['Times New Roman'] + plt.rcParams['font.serif']
     plt.rcParams['font.size'] = setting["fontsize"]
 
-    plot_success = setting["plot_success"]
+    context_dim = setting["context_dim"]
     num_iters = setting["num_iters"]
     steps_per_iter = setting["steps_per_iter"]
     fontsize = setting["fontsize"]
     figsize = setting["figsize"]
     bbox_to_anchor = setting["bbox_to_anchor"]
     subplot_settings = setting["subplot_settings"]
-    iterations = np.arange(0, num_iters, num_updates_per_iteration, dtype=int)
+    iterations = np.arange(num_updates_per_iteration, num_iters, num_updates_per_iteration, dtype=int)
     iterations_step = iterations*steps_per_iter
 
-    fig, axes = plt.subplots(2+int(plot_success),1, figsize=figsize, constrained_layout=True)
-    alg_exp_mid = {}
-    plt.suptitle("Evaluation wrt target distribution")
+    fig, axes = plt.subplots(context_dim,1, figsize=figsize, constrained_layout=True)
+    plt.suptitle("Evaluation wrt distributions in the curriculum")
 
-    for cur_algo in algorithms:
+    x_axis_splitter = np.arange(0.0, 4.0, 4/(len(algorithms)*len(seeds)))*steps_per_iter
+    for cur_algo_i, cur_algo in enumerate(algorithms):
         algorithm = algorithms[cur_algo]["algorithm"]
         label = algorithms[cur_algo]["label"]
         model = algorithms[cur_algo]["model"]
@@ -69,47 +65,23 @@ def plot_results(base_log_dir, num_updates_per_iteration, seeds, env, setting, a
 
         base_dir = os.path.join(base_log_dir, env, algorithm, model)
         print(base_dir)
-        ret, cost, succ = get_results(
+        context_traces = load_context_traces(
             base_dir=base_dir,
             seeds=seeds,
             iterations=iterations,
         )
-        expected_return_mid = ret["mid"]
-        expected_return_qlow = ret["qlow"]
-        expected_return_qhigh = ret["qhigh"]
-        expected_return_min = ret["min"]
-        expected_return_max = ret["max"]
-
-        expected_cum_cost_mid = cost["mid"]
-        expected_cum_cost_qlow = cost["qlow"]
-        expected_cum_cost_qhigh = cost["qhigh"]
-        expected_cum_cost_min = cost["min"]
-        expected_cum_cost_max = cost["max"]
-
-        alg_exp_mid[cur_algo] = expected_return_mid[-1]
-
-        axes[0].plot(iterations_step, expected_return_mid, color=color, linewidth=2.0, label=f"{label}",marker=".")
-        # axes[0].fill_between(iterations_step, expected_return_qlow, expected_return_qhigh, color=color, alpha=0.4)
-        axes[0].fill_between(iterations_step, expected_return_min, expected_return_max, color=color, alpha=0.4)
-        axes[1].plot(iterations_step, expected_cum_cost_mid, color=color, linewidth=2.0, marker=".")
-        # axes[1].fill_between(iterations_step, expected_cum_cost_qlow, expected_cum_cost_qhigh, color=color, alpha=0.4)
-        axes[1].fill_between(iterations_step, expected_cum_cost_min, expected_cum_cost_max, color=color, alpha=0.4)
-        if plot_success:            
-            expected_success_mid = succ["mid"]
-            expected_success_qlow = succ["qlow"]
-            expected_success_qhigh = succ["qhigh"]
-            expected_success_min = succ["min"]
-            expected_success_max = succ["max"]
-            axes[2].plot(iterations_step, expected_success_mid, color=color, linewidth=2.0, marker=".")
-            # axes[2].fill_between(iterations_step, expected_success_qlow, expected_success_qhigh, color=color, alpha=0.4)
-            axes[2].fill_between(iterations_step, expected_success_min, expected_success_max, color=color, alpha=0.4)
+        if len(context_traces) == 0: continue
+        for ax_i in range(context_dim):
+            for key in context_traces:
+                for seed in context_traces[key]:
+                    idx = int(key/num_updates_per_iteration)
+                    splitter_i = int(cur_algo_i*len(seeds) + seeds.index(seed))
+                    axes[ax_i].scatter(
+                        np.ones(context_traces[key][seed][:,ax_i].shape[0])*iterations_step[idx-1] + x_axis_splitter[splitter_i],
+                        context_traces[key][seed][:,ax_i], color=color, alpha=0.5, s=1.0/len(seeds))
 
     for i, ax in enumerate(axes):
         ax.ticklabel_format(axis='x', style='sci', scilimits=(5, 6), useMathText=True)
-        # if i != len(axes) - 1:
-        #     ax.set_xticks([])
-        # else:
-        #     ax.set_xlabel("Number of environment interactions")
         if i == len(axes)-1:
             ax.set_xlabel("Number of environment interactions")
         ax.set_xlim([iterations_step[0], iterations_step[-1]])
@@ -118,17 +90,12 @@ def plot_results(base_log_dir, num_updates_per_iteration, seeds, env, setting, a
         ax.grid(True)
 
 
-    sorted_alg_exp_mid = [b[0] for b in sorted(enumerate(list(alg_exp_mid.values()), ), key=lambda i: i[1])]
     colors = []
     labels = []
     num_alg = len(algorithms)
-    for alg_i in sorted_alg_exp_mid:
-        cur_algo = list(alg_exp_mid.keys())[alg_i]
+    for cur_algo in algorithms:
         colors.append(algorithms[cur_algo]["color"])
         labels.append(algorithms[cur_algo]["label"])
-    # for cur_algo in algorithms:
-    #     colors.append(algorithms[cur_algo]["color"])
-    #     labels.append(algorithms[cur_algo]["label"])
 
     markers = ["" for i in range(num_alg)]
     linestyles = ["-" for i in range(num_alg)]
@@ -155,10 +122,8 @@ def main():
     base_log_dir = os.path.join(Path(os.getcwd()).parent, "logs")
     num_updates_per_iteration = 5
     seeds = [str(i) for i in range(1, 4)]
-    # env = "safety_point_mass_2d_narrow"
-    # figname_extra = "KL_EPS=1.0"
     env = "safety_cartpole_2d_narrow"
-    figname_extra = "_KL_EPS=1.0_D=60_0.25xth"
+    figname_extra = "_KL_EPS=1.0_D=60_0.25xth_training_contexts"
 
     algorithms = {
         "safety_cartpole_2d_narrow": {
@@ -186,32 +151,8 @@ def main():
                 "model": "PPOLag_DELTA=60.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
                 "color": "green",
             },
-            "DEF_Lag": {
-                "algorithm": "default",
-                "label": "DEF_Lag",
-                "model": "PPOLag",
-                "color": "red",
-            },
-            "DEF": {
-                "algorithm": "default",
-                "label": "Default",
-                "model": "PPO",
-                "color": "magenta",
-            },
         },
         "safety_point_mass_2d_narrow": {
-            "CSPDL": {
-                "algorithm": "constrained_self_paced",
-                "label": "CSPDL_D=30",
-                "model": "PPO_DELTA=30.0_DELTA_C=0.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
-                "color": "gray",
-            },
-            "CSPDL2": {
-                "algorithm": "constrained_self_paced",
-                "label": "CSPDL2_D=30",
-                "model": "PPOLag_DELTA=30.0_DELTA_C=0.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
-                "color": "tan",
-            },
             "SPDL": {
                 "algorithm": "self_paced",
                 "label": "SPDL_D=30",
@@ -224,42 +165,30 @@ def main():
                 "model": "PPOLag_DELTA=30.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
                 "color": "green",
             },
-            "DEF_Lag": {
-                "algorithm": "default",
-                "label": "DEF_Lag",
-                "model": "PPOLag",
-                "color": "red",
-            },
-            "DEF": {
-                "algorithm": "default",
-                "label": "Default",
-                "model": "PPO",
-                "color": "magenta",
-            },
         },
     }
 
     settings = {
-        "safety_cartpole_2d_narrow":{
-            "plot_success": False,
+        "safety_cartpole_2d_narrow": {
+            "context_dim": 2,
             "num_iters": 200,
             "steps_per_iter": 2000,
             "fontsize": 16,
-            "figsize": (10, 6),
-            "bbox_to_anchor": (.5, 1.1),
+            "figsize": (10, 10),
+            "bbox_to_anchor": (.5, 1.05),
             "subplot_settings": {
                 0: {
-                    "ylabel": 'Ave. return',
-                    "ylim": [-10., 100.],
+                    "ylabel": 'Left Bar Position',
+                    "ylim": [-3., 0.],
                 },
                 1: {
-                    "ylabel": 'Ave. cum. cost',
-                    "ylim": [-10.0, 100.],
+                    "ylabel": 'Right Bar Position',
+                    "ylim": [0., 3.],
                 },
             },
         },
         "safety_point_mass_2d_narrow":{
-            "plot_success": True,
+            "context_dim": 2,
             "num_iters": 150,
             "steps_per_iter": 2000,
             "fontsize": 16,
@@ -267,16 +196,12 @@ def main():
             "bbox_to_anchor": (.5, 1.05),
             "subplot_settings": {
                 0: {
-                    "ylabel": 'Ave. return',
-                    "ylim": [-10., 80.],
+                    "ylabel": 'Left Lava Position',
+                    "ylim": [-4., 4.],
                 },
                 1: {
-                    "ylabel": 'Ave. cum. cost',
-                    "ylim": [-5.0, 90.],
-                },
-                2: {
-                    "ylabel": 'Ave. succ. rate',
-                    "ylim": [-0.1, 1.1],
+                    "ylabel": 'Right Lava Position',
+                    "ylim": [-4., 4.],
                 },
             },
         },

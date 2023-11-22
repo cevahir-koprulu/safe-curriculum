@@ -98,7 +98,8 @@ def plot_trajectories(base_log_dir, policy_from_iteration, seeds, exp, env_name,
     bbox_to_anchor = setting["bbox_to_anchor"]
 
     if "2D" in env_name:
-        context = np.array([-1.2, 1.2])
+        context = np.array([-0.6, 0.6])
+        # context = np.array([-1.2, 1.2])
         # context = np.array([-3.5, 3.5])
         # context = load_eval_contexts(experiment_name)[0]
         # context = np.array([-4.0, 4.0])
@@ -218,13 +219,13 @@ def plot_trajectories(base_log_dir, policy_from_iteration, seeds, exp, env_name,
 
 def main():
     base_log_dir = Path(os.getcwd()).parent
-    policy_from_iteration = 50
+    policy_from_iteration = 200
     seeds = [str(i) for i in range(1, 4)]
     # seeds = [1]
     rl_algorithm = "PPOLag"
     experiment_name = "safety_cartpole_2d_narrow"
     env_name = "ContextualSafetyCartpole2D-v0"
-    vidname_extra = "_KL_EPS=1.0"
+    vidname_extra = "_KL_EPS=1.0_D=40.0"
     # vidname_extra = ""
     discount_factor = 0.99
     
@@ -242,26 +243,26 @@ def main():
         "safety_cartpole_2d_narrow": {
             "CSPDL": {
                 "algorithm": "constrained_self_paced",
-                "label": "CSPDL_D=50",
-                "model": "PPO_DELTA=50.0_DELTA_C=0.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
+                "label": "CSPDL_D=40",
+                "model": "PPO_DELTA=40.0_DELTA_C=0.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
                 "color": "gray",
             },
             "CSPDL2": {
                 "algorithm": "constrained_self_paced",
-                "label": "CSPDL2_D=50",
-                "model": "PPOLag_DELTA=50.0_DELTA_C=0.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
+                "label": "CSPDL2_D=40",
+                "model": "PPOLag_DELTA=40.0_DELTA_C=0.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
                 "color": "tan",
             },
             "SPDL": {
                 "algorithm": "self_paced",
-                "label": "SPDL_D=50",
-                "model": "PPO_DELTA=50.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
+                "label": "SPDL_D=40",
+                "model": "PPO_DELTA=40.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
                 "color": "blue",
             },
             "SPDL2": {
                 "algorithm": "self_paced",
-                "label": "SPDL2_D=50",
-                "model": "PPOLag_DELTA=50.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
+                "label": "SPDL2_D=40",
+                "model": "PPOLag_DELTA=40.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
                 "color": "green",
             },
             "DEF_Lag": {

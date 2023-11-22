@@ -26,19 +26,23 @@ class SafetyCartpole2DExperiment(AbstractExperiment):
                            Learner.PPOLag: 0.0}
 
     TARGET_TYPE = "narrow"
-    TARGET_MEAN = np.array([-ContextualSafetyCartpole2D.X_THRESHOLD*0.5, 
-                            ContextualSafetyCartpole2D.X_THRESHOLD*0.5])
-    # TARGET_MEAN = np.array([-ContextualSafetyCartpole2D.X_THRESHOLD, 
-    #                         ContextualSafetyCartpole2D.X_THRESHOLD])
+    # TARGET_MEAN = np.array([-ContextualSafetyCartpole2D.X_THRESHOLD*0.5, 
+    #                         ContextualSafetyCartpole2D.X_THRESHOLD*0.5])
+    TARGET_MEAN = np.array([-ContextualSafetyCartpole2D.X_THRESHOLD*0.25, 
+                            ContextualSafetyCartpole2D.X_THRESHOLD*0.25])
     
     TARGET_VARIANCES = {
         "narrow": np.square(np.diag([.1, .1])),
         "wide": np.square(np.diag([1., 1.])),
     }
 
+    # LOWER_CONTEXT_BOUNDS = np.array([-ContextualSafetyCartpole2D.X_THRESHOLD, 
+    #                                  ContextualSafetyCartpole2D.X_THRESHOLD*0.5])
+    # UPPER_CONTEXT_BOUNDS = np.array([-ContextualSafetyCartpole2D.X_THRESHOLD*0.5,
+    #                                  ContextualSafetyCartpole2D.X_THRESHOLD])
     LOWER_CONTEXT_BOUNDS = np.array([-ContextualSafetyCartpole2D.X_THRESHOLD, 
-                                     ContextualSafetyCartpole2D.X_THRESHOLD*0.5])
-    UPPER_CONTEXT_BOUNDS = np.array([-ContextualSafetyCartpole2D.X_THRESHOLD*0.5,
+                                     ContextualSafetyCartpole2D.X_THRESHOLD*0.25])
+    UPPER_CONTEXT_BOUNDS = np.array([-ContextualSafetyCartpole2D.X_THRESHOLD*0.25,
                                      ContextualSafetyCartpole2D.X_THRESHOLD])
 
     def target_log_likelihood(self, cs):
@@ -59,12 +63,12 @@ class SafetyCartpole2DExperiment(AbstractExperiment):
     STD_LOWER_BOUND = np.array([0.1, 0.1])
     KL_THRESHOLD = 8000.
     KL_EPS = 1.0 # 0.5
-    DELTA = 60.0 # 50.0
+    DELTA = 40.0 # 50.0 # 60.0
     DELTA_C = 0.0
     METRIC_EPS = 0.5
     EP_PER_UPDATE = 10 # 20 # 100 # 200
     
-    NUM_ITER = 100 #150 
+    NUM_ITER = 200 # 100 #150 
     STEPS_PER_ITER = 2000
     DISCOUNT_FACTOR = 0.99
     LAM = 0.95 # 0.99 

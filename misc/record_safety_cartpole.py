@@ -225,7 +225,7 @@ def main():
     rl_algorithm = "PPOLag"
     experiment_name = "safety_cartpole_2d_narrow"
     env_name = "ContextualSafetyCartpole2D-v0"
-    vidname_extra = "_KL_EPS=1.0_D=40.0"
+    vidname_extra = "_KL_EPS=1.0"
     # vidname_extra = ""
     discount_factor = 0.99
     
@@ -241,28 +241,28 @@ def main():
 
     algorithms = {
         "safety_cartpole_2d_narrow": {
-            "CSPDL": {
+            "CSPDL_D=40": {
                 "algorithm": "constrained_self_paced",
                 "label": "CSPDL_D=40",
                 "model": "PPO_DELTA=40.0_DELTA_C=0.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
                 "color": "gray",
             },
-            "CSPDL2": {
+            "CSPDL2_D=60": {
                 "algorithm": "constrained_self_paced",
-                "label": "CSPDL2_D=40",
-                "model": "PPOLag_DELTA=40.0_DELTA_C=0.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
+                "label": "CSPDL2_D=60",
+                "model": "PPOLag_DELTA=60.0_DELTA_C=0.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
                 "color": "tan",
             },
-            "SPDL": {
+            "SPDL_D=50": {
                 "algorithm": "self_paced",
-                "label": "SPDL_D=40",
-                "model": "PPO_DELTA=40.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
+                "label": "SPDL_D=50",
+                "model": "PPO_DELTA=50.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
                 "color": "blue",
             },
-            "SPDL2": {
+            "SPDL2_D=50": {
                 "algorithm": "self_paced",
-                "label": "SPDL2_D=40",
-                "model": "PPOLag_DELTA=40.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
+                "label": "SPDL2_D=50",
+                "model": "PPOLag_DELTA=50.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
                 "color": "green",
             },
             "DEF_Lag": {

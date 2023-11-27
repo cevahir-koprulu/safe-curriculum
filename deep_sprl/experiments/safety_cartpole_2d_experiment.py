@@ -7,7 +7,7 @@ from deep_sprl.experiments.abstract_experiment import AbstractExperiment, Learne
 from deep_sprl.teachers.alp_gmm import ALPGMM, ALPGMMWrapper
 from deep_sprl.teachers.goal_gan import GoalGAN, GoalGANWrapper
 from deep_sprl.teachers.spl import ConstrainedSelfPacedTeacherV2, SelfPacedTeacherV2, \
-    ConstrainedSelfPacedWrapper, SelfPacedWrapper#, CurrOT
+    ConstrainedSelfPacedWrapper, SelfPacedWrapper, CurrOT
 from deep_sprl.teachers.dummy_teachers import UniformSampler, DistributionSampler
 from deep_sprl.teachers.dummy_wrapper import DummyWrapper
 from deep_sprl.teachers.abstract_teacher import BaseWrapper
@@ -28,8 +28,10 @@ class SafetyCartpole2DExperiment(AbstractExperiment):
     TARGET_TYPE = "narrow"
     # TARGET_MEAN = np.array([-ContextualSafetyCartpole2D.X_THRESHOLD*0.5, 
     #                         ContextualSafetyCartpole2D.X_THRESHOLD*0.5])
-    TARGET_MEAN = np.array([-ContextualSafetyCartpole2D.X_THRESHOLD*0.25, 
-                            ContextualSafetyCartpole2D.X_THRESHOLD*0.25])
+    # TARGET_MEAN = np.array([-ContextualSafetyCartpole2D.X_THRESHOLD*0.25, 
+    #                         ContextualSafetyCartpole2D.X_THRESHOLD*0.25])
+    TARGET_MEAN = np.array([-ContextualSafetyCartpole2D.X_THRESHOLD*0.2, 
+                            ContextualSafetyCartpole2D.X_THRESHOLD*0.2])
     
     TARGET_VARIANCES = {
         "narrow": np.square(np.diag([.1, .1])),
@@ -40,9 +42,13 @@ class SafetyCartpole2DExperiment(AbstractExperiment):
     #                                  ContextualSafetyCartpole2D.X_THRESHOLD*0.5])
     # UPPER_CONTEXT_BOUNDS = np.array([-ContextualSafetyCartpole2D.X_THRESHOLD*0.5,
     #                                  ContextualSafetyCartpole2D.X_THRESHOLD])
+    # LOWER_CONTEXT_BOUNDS = np.array([-ContextualSafetyCartpole2D.X_THRESHOLD, 
+    #                                  ContextualSafetyCartpole2D.X_THRESHOLD*0.25])
+    # UPPER_CONTEXT_BOUNDS = np.array([-ContextualSafetyCartpole2D.X_THRESHOLD*0.25,
+    #                                  ContextualSafetyCartpole2D.X_THRESHOLD])
     LOWER_CONTEXT_BOUNDS = np.array([-ContextualSafetyCartpole2D.X_THRESHOLD, 
-                                     ContextualSafetyCartpole2D.X_THRESHOLD*0.25])
-    UPPER_CONTEXT_BOUNDS = np.array([-ContextualSafetyCartpole2D.X_THRESHOLD*0.25,
+                                     ContextualSafetyCartpole2D.X_THRESHOLD*0.2])
+    UPPER_CONTEXT_BOUNDS = np.array([-ContextualSafetyCartpole2D.X_THRESHOLD*0.2,
                                      ContextualSafetyCartpole2D.X_THRESHOLD])
 
     def target_log_likelihood(self, cs):
@@ -55,21 +61,23 @@ class SafetyCartpole2DExperiment(AbstractExperiment):
         return rng.multivariate_normal(self.TARGET_MEAN, self.TARGET_VARIANCES[self.TARGET_TYPE], size=n)
 
     INIT_VAR = 0.1
-    INITIAL_MEAN = np.array([-ContextualSafetyCartpole2D.X_THRESHOLD, 
-                             ContextualSafetyCartpole2D.X_THRESHOLD])
+    # INITIAL_MEAN = np.array([-ContextualSafetyCartpole2D.X_THRESHOLD, 
+    #                          ContextualSafetyCartpole2D.X_THRESHOLD])
+    INITIAL_MEAN = np.array([-ContextualSafetyCartpole2D.X_THRESHOLD*0.7, 
+                             ContextualSafetyCartpole2D.X_THRESHOLD*0.7])
 
     DIST_TYPE = "gaussian"  # "cauchy"
 
     STD_LOWER_BOUND = np.array([0.1, 0.1])
     KL_THRESHOLD = 8000.
     KL_EPS = 1.0 # 0.5
-    DELTA = 40.0 # 50.0 # 60.0
+    DELTA = 30.0 # 50.0 # 60.0
     DELTA_C = 0.0
     METRIC_EPS = 0.5
-    EP_PER_UPDATE = 10 # 20 # 100 # 200
+    EP_PER_UPDATE = 10 # 5 # 20 # 100 # 200
     
-    NUM_ITER = 200 # 100 #150 
-    STEPS_PER_ITER = 2000
+    NUM_ITER = 200 # 400 # 100 #150 
+    STEPS_PER_ITER = 2000 # 1000
     DISCOUNT_FACTOR = 0.99
     LAM = 0.95 # 0.99 
 
@@ -204,7 +212,7 @@ class SafetyCartpole2DExperiment(AbstractExperiment):
             Learner.PPO:  {
                 'algo_cfgs': {
                     'steps_per_epoch': self.STEPS_PER_ITER, # to eval, log, actor scheduler step
-                    'update_iters': 4, #  10, # gradient steps
+                    'update_iters': 4, # 2, # 10, # gradient steps
                     'batch_size': 64, # 128, 
                     'target_kl': 0.02,
                     'entropy_coef': 0.0,
@@ -240,7 +248,7 @@ class SafetyCartpole2DExperiment(AbstractExperiment):
             Learner.PPOLag:  {
                 'algo_cfgs': {
                     'steps_per_epoch': self.STEPS_PER_ITER, # to eval, log, actor scheduler step
-                    'update_iters': 4, # 10, # gradient steps
+                    'update_iters': 4, # 2, # 10, # gradient steps
                     'batch_size': 64, # 128,
                     'target_kl': 0.02,
                     'entropy_coef': 0.0,
@@ -353,7 +361,7 @@ class SafetyCartpole2DExperiment(AbstractExperiment):
                                                     cost_ub=self.DELTA_C, max_kl=self.KL_EPS, std_lower_bound=self.STD_LOWER_BOUND.copy(),
                                                     kl_threshold=self.KL_THRESHOLD, dist_type=self.DIST_TYPE)
         else:
-            raise NotImplementedError("Invalid self-paced teacher type: ", str(self.curriculum()))
+            # raise NotImplementedError("Invalid self-paced teacher type: ", str(self.curriculum()))
             init_samples = np.random.uniform(self.LOWER_CONTEXT_BOUNDS, self.UPPER_CONTEXT_BOUNDS, size=(200, 2))
             return CurrOT(bounds, init_samples, self.target_sampler, self.DELTA, self.METRIC_EPS, self.EP_PER_UPDATE,
                           wb_max_reuse=1)

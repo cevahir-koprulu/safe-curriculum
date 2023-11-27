@@ -7,7 +7,7 @@ from deep_sprl.experiments.abstract_experiment import AbstractExperiment, Learne
 from deep_sprl.teachers.alp_gmm import ALPGMM, ALPGMMWrapper
 from deep_sprl.teachers.goal_gan import GoalGAN, GoalGANWrapper
 from deep_sprl.teachers.spl import ConstrainedSelfPacedTeacherV2, SelfPacedTeacherV2, \
-    ConstrainedSelfPacedWrapper, SelfPacedWrapper#, CurrOT
+    ConstrainedSelfPacedWrapper, SelfPacedWrapper, CurrOT
 from deep_sprl.teachers.dummy_teachers import UniformSampler, DistributionSampler
 from deep_sprl.teachers.dummy_wrapper import DummyWrapper
 from deep_sprl.teachers.abstract_teacher import BaseWrapper
@@ -343,7 +343,7 @@ class SafetyPointMass1DExperiment(AbstractExperiment):
                                                     cost_ub=self.DELTA_C, max_kl=self.KL_EPS, std_lower_bound=self.STD_LOWER_BOUND.copy(),
                                                     kl_threshold=self.KL_THRESHOLD, dist_type=self.DIST_TYPE)
         else:
-            raise NotImplementedError("Invalid self-paced teacher type: ", str(self.curriculum()))
+            # raise NotImplementedError("Invalid self-paced teacher type: ", str(self.curriculum()))
             init_samples = np.random.uniform(self.LOWER_CONTEXT_BOUNDS, self.UPPER_CONTEXT_BOUNDS, size=(200, 2))
             return CurrOT(bounds, init_samples, self.target_sampler, self.DELTA, self.METRIC_EPS, self.EP_PER_UPDATE,
                           wb_max_reuse=1)

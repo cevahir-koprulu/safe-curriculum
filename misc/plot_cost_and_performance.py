@@ -158,34 +158,58 @@ def main():
     # env = "safety_point_mass_2d_narrow"
     # figname_extra = "KL_EPS=1.0"
     env = "safety_cartpole_2d_narrow"
-    figname_extra = "_KL_EPS=1.0_D=60_0.25xth"
+    figname_extra = "_KL_EPS=1.0_im=0.7xth_0.2xth"
 
     algorithms = {
         "safety_cartpole_2d_narrow": {
-            "CSPDL": {
+            "CSPDL_D=10": {
                 "algorithm": "constrained_self_paced",
-                "label": "CSPDL_D=60",
-                "model": "PPO_DELTA=60.0_DELTA_C=0.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
+                "label": "CSPDL_D=10",
+                "model": "PPO_DELTA=40.0_DELTA_C=0.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
                 "color": "gray",
             },
-            "CSPDL2": {
+            "CSPDL2_D=10": {
                 "algorithm": "constrained_self_paced",
-                "label": "CSPDL2_D=60",
-                "model": "PPOLag_DELTA=60.0_DELTA_C=0.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
+                "label": "CSPDL2_D=10",
+                "model": "PPOLag_DELTA=10.0_DELTA_C=0.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
                 "color": "tan",
             },
-            "SPDL": {
-                "algorithm": "self_paced",
-                "label": "SPDL_D=60",
-                "model": "PPO_DELTA=60.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
+            "CSPDL_D=15": {
+                "algorithm": "constrained_self_paced",
+                "label": "CSPDL_D=15",
+                "model": "PPO_DELTA=15.0_DELTA_C=0.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
                 "color": "blue",
             },
-            "SPDL2": {
-                "algorithm": "self_paced",
-                "label": "SPDL2_D=60",
-                "model": "PPOLag_DELTA=60.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
+            "CSPDL2_D=15": {
+                "algorithm": "constrained_self_paced",
+                "label": "CSPDL2_D=15",
+                "model": "PPOLag_DELTA=15.0_DELTA_C=0.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
                 "color": "green",
             },
+            "CSPDL_D=25": {
+                "algorithm": "constrained_self_paced",
+                "label": "CSPDL_D=25",
+                "model": "PPO_DELTA=25.0_DELTA_C=0.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
+                "color": "red",
+            },
+            "CSPDL2_D=25": {
+                "algorithm": "constrained_self_paced",
+                "label": "CSPDL2_D=25",
+                "model": "PPOLag_DELTA=25.0_DELTA_C=0.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
+                "color": "brown",
+            },
+            # "SPDL_D=50": {
+            #     "algorithm": "self_paced",
+            #     "label": "SPDL_D=50",
+            #     "model": "PPO_DELTA=50.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
+            #     "color": "blue",
+            # },
+            # "SPDL2_D=50": {
+            #     "algorithm": "self_paced",
+            #     "label": "SPDL2_D=50",
+            #     "model": "PPOLag_DELTA=50.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
+            #     "color": "green",
+            # },
             "DEF_Lag": {
                 "algorithm": "default",
                 "label": "DEF_Lag",

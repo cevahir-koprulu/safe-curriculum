@@ -1,3 +1,4 @@
+from .safety_door import contextual_safety_door_2d
 from .safety_cartpole import contextual_safety_cartpole
 from .safety_point_mass import contextual_safety_point_mass_1d
 from .safety_point_mass import contextual_safety_point_mass_2d

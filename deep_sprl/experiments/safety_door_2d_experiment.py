@@ -18,25 +18,23 @@ from deep_sprl.teachers.util import Subsampler
 from deep_sprl.util.utils import update_params
 from scipy.stats import multivariate_normal
 
-from deep_sprl.environments.safety_point_mass import ContextualSafetyPointMass2D
+from deep_sprl.environments.safety_door import ContextualSafetyDoor2D
 
-class SafetyPointMass2DExperiment(AbstractExperiment):
+class SafetyDoor2DExperiment(AbstractExperiment):
     PENALTY_COEFFICIENT = {Learner.SAC: 0.0, 
                            Learner.PPO: 1.0, # 0.1, 
                            Learner.PPOLag: 0.0}
 
     TARGET_TYPE = "narrow"
-    TARGET_MEAN = np.array([ContextualSafetyPointMass2D.ROOM_WIDTH*0.3, 
-                            -ContextualSafetyPointMass2D.ROOM_WIDTH*0.3])
+    TARGET_MEAN = np.array([ContextualSafetyDoor2D.ROOM_WIDTH*0.3125, 0.5])
     TARGET_VARIANCES = {
         "narrow": np.square(np.diag([.1, .1])),
         "wide": np.square(np.diag([1., 1.])),
     }
 
-    LOWER_CONTEXT_BOUNDS = np.array([-ContextualSafetyPointMass2D.ROOM_WIDTH/2, 
-                                     -ContextualSafetyPointMass2D.ROOM_WIDTH*0.3])
-    UPPER_CONTEXT_BOUNDS = np.array([ContextualSafetyPointMass2D.ROOM_WIDTH*0.3,
-                                     ContextualSafetyPointMass2D.ROOM_WIDTH/2])
+    LOWER_CONTEXT_BOUNDS = np.array([-ContextualSafetyDoor2D.ROOM_WIDTH/2, 0.5])
+    UPPER_CONTEXT_BOUNDS = np.array([ContextualSafetyDoor2D.ROOM_WIDTH/2,
+                                     ContextualSafetyDoor2D.ROOM_WIDTH])
 
     def target_log_likelihood(self, cs):
         return multivariate_normal.logpdf(cs, self.TARGET_MEAN, self.TARGET_VARIANCES[self.TARGET_TYPE])
@@ -47,9 +45,8 @@ class SafetyPointMass2DExperiment(AbstractExperiment):
 
         return rng.multivariate_normal(self.TARGET_MEAN, self.TARGET_VARIANCES[self.TARGET_TYPE], size=n)
 
-    INIT_VAR = 0.1
-    INITIAL_MEAN = np.array([-ContextualSafetyPointMass2D.ROOM_WIDTH/2, 
-                             ContextualSafetyPointMass2D.ROOM_WIDTH/2])
+    INIT_VAR = 1.0
+    INITIAL_MEAN = np.array([0., 4.25])
     # INITIAL_VARIANCE = np.diag(np.square([0.1, 0.1]))
 
     DIST_TYPE = "gaussian"  # "cauchy"
@@ -57,12 +54,12 @@ class SafetyPointMass2DExperiment(AbstractExperiment):
     STD_LOWER_BOUND = np.array([0.1, 0.1])
     KL_THRESHOLD = 8000.
     KL_EPS = 1.0 # 0.5
-    DELTA = 30.0 # 20.0 # 10.0
+    DELTA = 30.0
     DELTA_C = 0.0
     METRIC_EPS = 0.5
     EP_PER_UPDATE = 10 # 20 # 100 # 200
     
-    NUM_ITER = 150 # 250 # 1000 # 500
+    NUM_ITER = 300 # 150
     STEPS_PER_ITER = 2000 # 4000
     DISCOUNT_FACTOR = 0.99
     LAM = 0.95 # 0.99 
@@ -98,7 +95,7 @@ class SafetyPointMass2DExperiment(AbstractExperiment):
         self.eval_env.initialize_wrapper(**wrapper_kwargs)
 
     def create_environment(self, evaluation=False):
-        env_id = "ContextualSafetyPointMass2D-v0"
+        env_id = "ContextualSafetyDoor2D-v0"
         special_kwargs = {}
         if evaluation or self.curriculum.default():
             teacher = DistributionSampler(self.target_sampler, self.LOWER_CONTEXT_BOUNDS, self.UPPER_CONTEXT_BOUNDS)
@@ -328,7 +325,7 @@ class SafetyPointMass2DExperiment(AbstractExperiment):
             obs_shape = model.agent._env._env._observation_space.shape
             action_dim = model.agent._env._env._action_space.shape[0]
             state_provider = lambda contexts: np.concatenate(
-                [np.repeat(np.array([ContextualSafetyPointMass2D.ROOM_WIDTH/2-0.5, 0., -3.5, 0.0])[None, :], 
+                [np.repeat(np.array([ContextualSafetyDoor2D.ROOM_WIDTH/2-0.5, 0., -3.5, 0.0])[None, :], 
                            contexts.shape[0], axis=0),
                  contexts], axis=-1)
             model.agent._env._env.teacher.initialize_teacher(obs_shape, action_dim, interface, state_provider)
@@ -353,7 +350,7 @@ class SafetyPointMass2DExperiment(AbstractExperiment):
                           wb_max_reuse=1)
 
     def get_env_name(self):
-        return f"safety_point_mass_2d_{self.TARGET_TYPE}"
+        return f"safety_door_2d_{self.TARGET_TYPE}"
 
     def evaluate_learner(self, model_path, eval_type=""):
         num_context = None

@@ -2,8 +2,8 @@ import os
 import torch
 import pickle
 import numpy as np
-# import cyipopt as ipopt
-# from geomloss import SamplesLoss
+import cyipopt as ipopt
+from geomloss import SamplesLoss
 
 
 class WassersteinInterpolation:

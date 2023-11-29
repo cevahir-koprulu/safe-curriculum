@@ -1,6 +1,6 @@
 from sklearn.mixture import GaussianMixture as GMM
 import numpy as np
-from gym.spaces import Box
+from gymnasium.spaces import Box
 from deep_sprl.teachers.alp_gmm.dataset import BufferedDataset
 from deep_sprl.teachers.abstract_teacher import AbstractTeacher
 

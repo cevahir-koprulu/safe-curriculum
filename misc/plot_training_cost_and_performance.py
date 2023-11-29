@@ -158,10 +158,38 @@ def main():
     base_log_dir = os.path.join(Path(os.getcwd()).parent, "logs")
     num_updates_per_iteration = 5
     seeds = [str(i) for i in range(1, 4)]
-    env = "safety_cartpole_2d_narrow"
-    figname_extra = "_KL_EPS=1.0_im=0.7xth_0.2xth_training"
+    env = "safety_door_2d_narrow"
+    figname_extra = "_D=30_rExp0.2_lBorder_training"
+    # env = "safety_cartpole_2d_narrow"
+    # figname_extra = "_KL_EPS=1.0_im=0.7xth_0.2xth_training"
 
     algorithms = {
+        "safety_door_2d_narrow": {
+            "CSPDL2_KL=1.0": {
+                "algorithm": "constrained_self_paced",
+                "label": "CSPDL2_KL=1.0",
+                "model": "PPOLag_DELTA=30.0_DELTA_C=0.0_DIST_TYPE=gaussian_INIT_VAR=1.0_KL_EPS=1.0",
+                "color": "gray",
+            },
+            "SPDL2_KL=1.0": {
+                "algorithm": "constrained_self_paced",
+                "label": "SPDL2_KL=1.0",
+                "model": "PPOLag_DELTA=30.0_DELTA_C=0.0_DIST_TYPE=gaussian_INIT_VAR=1.0_KL_EPS=1.0",
+                "color": "tan",
+            },
+            "CSPDL2_KL=0.5": {
+                "algorithm": "constrained_self_paced",
+                "label": "CSPDL2_KL=0.5",
+                "model": "PPOLag_DELTA=30.0_DELTA_C=0.0_DIST_TYPE=gaussian_INIT_VAR=1.0_KL_EPS=0.5",
+                "color": "blue",
+            },
+            "SPDL2_KL=0.5": {
+                "algorithm": "constrained_self_paced",
+                "label": "SPDL2_KL=0.5",
+                "model": "PPOLag_DELTA=30.0_DELTA_C=0.0_DIST_TYPE=gaussian_INIT_VAR=1.0_KL_EPS=0.5",
+                "color": "green",
+            },
+        },
         "safety_cartpole_2d_narrow": {
             "CSPDL_D=10": {
                 "algorithm": "constrained_self_paced",
@@ -229,6 +257,28 @@ def main():
     }
 
     settings = {
+        "safety_door_2d_narrow":{
+            "plot_success": True,
+            "num_iters": 300,
+            "steps_per_iter": 2000,
+            "fontsize": 16,
+            "figsize": (10, 10),
+            "bbox_to_anchor": (.5, 1.05),
+            "subplot_settings": {
+                0: {
+                    "ylabel": 'Ave. return',
+                    "ylim": [-5., 200.],
+                },
+                1: {
+                    "ylabel": 'Ave. cum. cost',
+                    "ylim": [-5.0, 200.],
+                },
+                2: {
+                    "ylabel": 'Ave. succ. rate',
+                    "ylim": [-0.1, 1.1],
+                },
+            },
+        },
         "safety_cartpole_2d_narrow": {
             "plot_success": False,
             "num_iters": 200,

@@ -13,8 +13,9 @@ def main():
                                  "wasserstein", "alp_gmm",
                                  "goal_gan", "acl", "plr", "vds"])
     parser.add_argument("--learner", type=str, default="PPO", choices=["PPO", "SAC", "PPOLag"])
-    parser.add_argument("--env", type=str, default="safety_cartpole_2d",
-                        choices=["safety_point_mass_1d", "safety_point_mass_2d", "safety_cartpole_2d"])
+    parser.add_argument("--env", type=str, default="safety_door_2d",
+                        choices=["safety_point_mass_1d", "safety_point_mass_2d", "safety_cartpole_2d",
+                                 "safety_door_2d"])
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--n_cores", type=int, default=1)
     parser.add_argument('--train', action='store_true')
@@ -41,6 +42,9 @@ def main():
     elif args.env == "safety_cartpole_2d":
         from deep_sprl.experiments import SafetyCartpole2DExperiment
         exp = SafetyCartpole2DExperiment(args.base_log_dir, args.type, args.learner, parameters, args.seed, args.device)
+    elif args.env == "safety_door_2d":
+        from deep_sprl.experiments import SafetyDoor2DExperiment
+        exp = SafetyDoor2DExperiment(args.base_log_dir, args.type, args.learner, parameters, args.seed, args.device)
     else:
         raise RuntimeError("Unknown environment '%s'!" % args.env)
 

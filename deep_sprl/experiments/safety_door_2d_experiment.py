@@ -22,7 +22,7 @@ from deep_sprl.environments.safety_door import ContextualSafetyDoor2D
 
 class SafetyDoor2DExperiment(AbstractExperiment):
     PENALTY_COEFFICIENT = {Learner.SAC: 0.0, 
-                           Learner.PPO: 1.0, # 0.1, 
+                           Learner.PPO: 1.0,
                            Learner.PPOLag: 0.0}
 
     TARGET_TYPE = "narrow"
@@ -45,8 +45,9 @@ class SafetyDoor2DExperiment(AbstractExperiment):
 
         return rng.multivariate_normal(self.TARGET_MEAN, self.TARGET_VARIANCES[self.TARGET_TYPE], size=n)
 
-    INIT_VAR = 1.0
-    INITIAL_MEAN = np.array([0., 4.25])
+    INIT_VAR = 0.5 # 1.0
+    INITIAL_MEAN = np.array([0., 4.])
+    # INITIAL_MEAN = np.array([0., 4.25])
     # INITIAL_VARIANCE = np.diag(np.square([0.1, 0.1]))
 
     DIST_TYPE = "gaussian"  # "cauchy"
@@ -56,10 +57,11 @@ class SafetyDoor2DExperiment(AbstractExperiment):
     KL_EPS = 1.0 # 0.5
     DELTA = 30.0
     DELTA_C = 0.0
+    DELTA_C_EXT = 0.0
     METRIC_EPS = 0.5
     EP_PER_UPDATE = 10 # 20 # 100 # 200
     
-    NUM_ITER = 300 # 150
+    NUM_ITER = 150 # 300
     STEPS_PER_ITER = 2000 # 4000
     DISCOUNT_FACTOR = 0.99
     LAM = 0.95 # 0.99 
@@ -341,7 +343,8 @@ class SafetyDoor2DExperiment(AbstractExperiment):
         elif self.curriculum.constrained_self_paced():
             return ConstrainedSelfPacedTeacherV2(self.target_log_likelihood, self.target_sampler, self.INITIAL_MEAN.copy(),
                                                     np.diag(np.square([self.INIT_VAR, self.INIT_VAR])), bounds, self.DELTA,
-                                                    cost_ub=self.DELTA_C, max_kl=self.KL_EPS, std_lower_bound=self.STD_LOWER_BOUND.copy(),
+                                                    cost_ub=self.DELTA_C+self.DELTA_C_EXT, max_kl=self.KL_EPS, 
+                                                    std_lower_bound=self.STD_LOWER_BOUND.copy(),
                                                     kl_threshold=self.KL_THRESHOLD, dist_type=self.DIST_TYPE)
         else:
             # raise NotImplementedError("Invalid self-paced teacher type: ", str(self.curriculum()))
@@ -395,8 +398,9 @@ class SafetyDoor2DExperiment(AbstractExperiment):
                     returns.append(reward)
                 if any(success):
                     num_succ_eps_per_c[i] += 1. / num_run
-                all_costs[i] += np.cumprod((np.ones(200)*self.DISCOUNT_FACTOR))/self.DISCOUNT_FACTOR@np.array(costs) / num_run
-                all_returns[i] += np.cumprod((np.ones(200)*self.DISCOUNT_FACTOR))/self.DISCOUNT_FACTOR@np.array(returns) / num_run
+                discs = np.cumprod((np.ones(len(costs))*self.DISCOUNT_FACTOR))/self.DISCOUNT_FACTOR
+                all_costs[i] += discs@np.array(costs) / num_run
+                all_returns[i] += discs@np.array(returns) / num_run
             # input("END OF EPISODE")
         print(f"Successful Eps: {100 * np.mean(num_succ_eps_per_c)}%")
         print(f"Average Cost: {np.mean(all_costs)}")
@@ -441,9 +445,9 @@ class SafetyDoor2DExperiment(AbstractExperiment):
                     returns.append(reward)
                 if any(success):
                     num_succ_eps_per_c[i] += 1. / num_run
-                all_costs[i] += np.cumprod((np.ones(200)*self.DISCOUNT_FACTOR))/self.DISCOUNT_FACTOR@np.array(costs) / num_run
-                all_returns[i] += np.cumprod((np.ones(200)*self.DISCOUNT_FACTOR))/self.DISCOUNT_FACTOR@np.array(returns) / num_run
-            # input("END OF EPISODE")
+                discs = np.cumprod((np.ones(len(costs))*self.DISCOUNT_FACTOR))/self.DISCOUNT_FACTOR
+                all_costs[i] += discs@np.array(costs) / num_run
+                all_returns[i] += discs@np.array(returns) / num_run
         print(f"Successful Eps: {100 * np.mean(num_succ_eps_per_c)}%")
         print(f"Average Cost: {np.mean(all_costs)}")
         disc_rewards = self.eval_env.get_reward_buffer()

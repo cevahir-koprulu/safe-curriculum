@@ -220,7 +220,8 @@ class AbstractExperiment(ABC):
                      CurriculumType.ACL: ["ACL_EPS", "ACL_ETA"],
                      CurriculumType.PLR: ["PLR_REPLAY_RATE", "PLR_BETA", "PLR_RHO"],
                      CurriculumType.VDS: ["VDS_NQ", "VDS_LR", "VDS_EPOCHS", "VDS_BATCHES"],
-                    CurriculumType.ConstrainedSelfPaced: ["DELTA_C", "DELTA", "KL_EPS", "DIST_TYPE", "INIT_VAR"]}
+                    CurriculumType.ConstrainedSelfPaced: ["DELTA_C", "DELTA_C_EXT", "DELTA", 
+                                                          "KL_EPS", "DIST_TYPE", "INIT_VAR"]}
 
     def __init__(self, base_log_dir, curriculum_name, learner_name, parameters, seed, device, view=False):
         self.device = device

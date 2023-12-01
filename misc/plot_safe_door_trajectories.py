@@ -79,7 +79,7 @@ def load_eval_contexts(experiment_name):
     return np.load(os.path.join(Path(os.getcwd()).parent, "eval_contexts", f"{experiment_name}_eval_contexts.npy"))
 
 def plot_trajectories(base_log_dir, policy_from_iteration, seeds, exp, env_name, experiment_name,
-                      discount_factor, setting, algorithms, figname_extra):
+                      discount_factor, setting, algorithms, figname_extra, context):
     plt.rcParams['font.family'] = 'serif'
     plt.rcParams['font.serif'] = ['Times New Roman'] + plt.rcParams['font.serif']
     plt.rcParams['font.size'] = setting["fontsize"]
@@ -88,7 +88,7 @@ def plot_trajectories(base_log_dir, policy_from_iteration, seeds, exp, env_name,
     figsize = setting["figsize"]
     bbox_to_anchor = setting["bbox_to_anchor"]
 
-    context = load_eval_contexts(experiment_name)[0]
+
 
     fig, axes = plt.subplots(1, len(seeds), figsize=figsize, constrained_layout=True)
     plt.suptitle(f"Context: ({context[0]},{context[1]}) || Iteration: {policy_from_iteration}")
@@ -103,7 +103,10 @@ def plot_trajectories(base_log_dir, policy_from_iteration, seeds, exp, env_name,
         ax.set_yticks([0.0, 8.0])
         ax.set_aspect('equal')
         ax.set_title(f"Seed {seeds[ax_i]}",fontsize=fontsize)
-        ax.set_xticks([0.0, context[0]+4.0, context[1]+4.0, 8.0])
+        ax.set_xticks([0.0, 4.0, context[0]+4.0, 8.0])
+        ax.vlines(context[0]-context[1]/2+4.0, 0.0, 8.0, color="black", linewidth=2.0)
+        ax.vlines(context[0]+context[1]/2+4.0, 0.0, 8.0, color="black", linewidth=2.0)
+        ax.hlines(3.0, 0.0, 8.0, color="black", linewidth=2.0)
         lava_1 = Rectangle((0.0, 3.0), context[0]-context[1]/2+4.0, 2.0, facecolor="red", alpha=0.5)
         lava_2 = Rectangle((context[0]+context[1]/2+4.0, 3.0), 4.0-context[0]-context[1]/2, 2.0, facecolor="red", alpha=0.5)
         ax.add_patch(lava_1)
@@ -120,6 +123,8 @@ def plot_trajectories(base_log_dir, policy_from_iteration, seeds, exp, env_name,
         print(algorithm)
         for seed_i, seed in enumerate(seeds):
             omnisafe_dir_file = os.path.join(base_log_dir, "logs", experiment_name, algorithm, model, f"seed-{seed}", "omnisafe_log_dir.txt")
+            if not os.path.exists(omnisafe_dir_file):
+                continue
             with open(omnisafe_dir_file, "r") as f:
                 omnisafe_dir = f.read()
             policy_path = os.path.join(base_log_dir, omnisafe_dir, "torch_save", f"epoch-{policy_from_iteration}.pt")
@@ -133,10 +138,11 @@ def plot_trajectories(base_log_dir, policy_from_iteration, seeds, exp, env_name,
             disc_cost = np.sum(costs * np.power(discount_factor, np.arange(costs.shape[0])))
             x, v_x, y, v_y = obs[:, 0], obs[:, 1], obs[:, 2], obs[:, 3]
             axes[seed_i].plot(x+4.0, y+4.0, color=color, alpha=0.5, linewidth=3.0)
-            axes[seed_i].quiver(x+4.0, y+4.0, v_x/(10*np.sqrt(v_x**2+v_y**2)), v_y/(10*np.sqrt(v_x**2+v_y**2)),
+            axes[seed_i].quiver(x+4.0, y+4.0, v_x/(10*np.sqrt(v_x**2+v_y**2)+0.01), v_y/(10*np.sqrt(v_x**2+v_y**2)+0.01),
                                  color=color, alpha=0.5, width=0.01)
             axes[seed_i].text(0.1, 0.1+0.5*algo_i,
-                              f"Return: {disc_return:.2f} || Cost: {disc_cost:.2f} || Succ: {np.any(succs)}",
+                            #   f"Return: {disc_return:.2f} || Cost: {disc_cost:.2f} || Succ: {np.any(succs)}",
+                              f"{disc_return:.2f} || {disc_cost:.2f} || {np.any(succs)}",
                               color=color)
 
     colors = []
@@ -173,14 +179,17 @@ def plot_trajectories(base_log_dir, policy_from_iteration, seeds, exp, env_name,
 
 def main():
     base_log_dir = Path(os.getcwd()).parent
-    policy_from_iteration = 300
+    policy_from_iteration = 150
     seeds = [str(i) for i in range(1, 4)]
     rl_algorithm = "PPOLag"
     experiment_name = "safety_door_2d_narrow"
     env_name = "ContextualSafetyDoor2D-v0"
-    figname_extra = "_D=30_rExp0.2_lBorder"
+    figname_extra = "_rExp0.8_lBorder0.01_slp=0.2"
     discount_factor = 0.99
     
+    context = load_eval_contexts(experiment_name)[0]
+    # context = np.array([1.5, 1.0])
+
     if experiment_name[:experiment_name.rfind('_')] == "safety_door_2d":
         from deep_sprl.experiments import SafetyDoor2DExperiment
         exp = SafetyDoor2DExperiment(base_log_dir="logs", curriculum_name="default", 
@@ -193,30 +202,30 @@ def main():
 
     algorithms = {
         "safety_door_2d_narrow": {
-            "CSPDL2_KL=1.0": {
-                "algorithm": "constrained_self_paced",
-                "label": "CSPDL2_KL=1.0",
-                "model": "PPOLag_DELTA=30.0_DELTA_C=0.0_DIST_TYPE=gaussian_INIT_VAR=1.0_KL_EPS=1.0",
-                "color": "gray",
-            },
-            "SPDL2_KL=1.0": {
-                "algorithm": "constrained_self_paced",
-                "label": "SPDL2_KL=1.0",
-                "model": "PPOLag_DELTA=30.0_DELTA_C=0.0_DIST_TYPE=gaussian_INIT_VAR=1.0_KL_EPS=1.0",
-                "color": "tan",
-            },
-            "CSPDL2_KL=0.5": {
-                "algorithm": "constrained_self_paced",
-                "label": "CSPDL2_KL=0.5",
-                "model": "PPOLag_DELTA=30.0_DELTA_C=0.0_DIST_TYPE=gaussian_INIT_VAR=1.0_KL_EPS=0.5",
-                "color": "blue",
-            },
-            "SPDL2_KL=0.5": {
-                "algorithm": "constrained_self_paced",
-                "label": "SPDL2_KL=0.5",
-                "model": "PPOLag_DELTA=30.0_DELTA_C=0.0_DIST_TYPE=gaussian_INIT_VAR=1.0_KL_EPS=0.5",
-                "color": "green",
-            },
+            # "CSPDL2_KL=0.25": {
+            #     "algorithm": "constrained_self_paced",
+            #     "label": "CSPDL2_KL=0.25",
+            #     "model": "PPOLag_DELTA=20.0_DELTA_C=0.0_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.25",
+            #     "color": "gray",
+            # },
+            # "SPDL2_KL=0.25": {
+            #     "algorithm": "self_paced",
+            #     "label": "SPDL2_KL=0.25",
+            #     "model": "PPOLag_DELTA=20.0_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.25",
+            #     "color": "tan",
+            # },
+            # "CSPDL2_KL=0.5": {
+            #     "algorithm": "constrained_self_paced",
+            #     "label": "CSPDL2_KL=0.5",
+            #     "model": "PPOLag_DELTA=20.0_DELTA_C=0.0_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.5",
+            #     "color": "blue",
+            # },
+            # "SPDL2_KL=0.5": {
+            #     "algorithm": "self_paced",
+            #     "label": "SPDL2_KL=0.5",
+            #     "model": "PPOLag_DELTA=20.0_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.5",
+            #     "color": "green",
+            # },
             "DEF_Lag": {
                 "algorithm": "default",
                 "label": "DEF_Lag",
@@ -251,6 +260,7 @@ def main():
         setting=settings[experiment_name],
         algorithms=algorithms[experiment_name],
         figname_extra=figname_extra,
+        context=context,
         )
 
 if __name__ == "__main__":

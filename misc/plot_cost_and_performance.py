@@ -156,7 +156,7 @@ def main():
     num_updates_per_iteration = 5
     seeds = [str(i) for i in range(1, 4)]
     env = "safety_door_2d_narrow"
-    figname_extra = "_D=30_rExp0.2_lBorder"
+    figname_extra = "_rExp0.8_lBorder=0.01_slp=0.2_walled"
     # env = "safety_point_mass_2d_narrow"
     # figname_extra = "KL_EPS=1.0"
     # env = "safety_cartpole_2d_narrow"
@@ -164,30 +164,30 @@ def main():
 
     algorithms = {
         "safety_door_2d_narrow": {
-            "CSPDL2_KL=1.0": {
-                "algorithm": "constrained_self_paced",
-                "label": "CSPDL2_KL=1.0",
-                "model": "PPOLag_DELTA=30.0_DELTA_C=0.0_DIST_TYPE=gaussian_INIT_VAR=1.0_KL_EPS=1.0",
-                "color": "gray",
-            },
-            "SPDL2_KL=1.0": {
-                "algorithm": "constrained_self_paced",
-                "label": "SPDL2_KL=1.0",
-                "model": "PPOLag_DELTA=30.0_DELTA_C=0.0_DIST_TYPE=gaussian_INIT_VAR=1.0_KL_EPS=1.0",
-                "color": "tan",
-            },
-            "CSPDL2_KL=0.5": {
-                "algorithm": "constrained_self_paced",
-                "label": "CSPDL2_KL=0.5",
-                "model": "PPOLag_DELTA=30.0_DELTA_C=0.0_DIST_TYPE=gaussian_INIT_VAR=1.0_KL_EPS=0.5",
-                "color": "blue",
-            },
-            "SPDL2_KL=0.5": {
-                "algorithm": "constrained_self_paced",
-                "label": "SPDL2_KL=0.5",
-                "model": "PPOLag_DELTA=30.0_DELTA_C=0.0_DIST_TYPE=gaussian_INIT_VAR=1.0_KL_EPS=0.5",
-                "color": "green",
-            },
+            # "CSPDL2_KL=0.25": {
+            #     "algorithm": "constrained_self_paced",
+            #     "label": "CSPDL2_KL=0.25",
+            #     "model": "PPOLag_DELTA=20.0_DELTA_C=0.0_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.25",
+            #     "color": "gray",
+            # },
+            # "SPDL2_KL=0.25": {
+            #     "algorithm": "self_paced",
+            #     "label": "SPDL2_KL=0.25",
+            #     "model": "PPOLag_DELTA=20.0_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.25",
+            #     "color": "tan",
+            # },
+            # "CSPDL2_KL=0.5": {
+            #     "algorithm": "constrained_self_paced",
+            #     "label": "CSPDL2_KL=0.5",
+            #     "model": "PPOLag_DELTA=20.0_DELTA_C=0.0_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.5",
+            #     "color": "blue",
+            # },
+            # "SPDL2_KL=0.5": {
+            #     "algorithm": "self_paced",
+            #     "label": "SPDL2_KL=0.5",
+            #     "model": "PPOLag_DELTA=20.0_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.5",
+            #     "color": "green",
+            # },
             "DEF_Lag": {
                 "algorithm": "default",
                 "label": "DEF_Lag",
@@ -306,7 +306,7 @@ def main():
     settings = {
         "safety_door_2d_narrow":{
             "plot_success": True,
-            "num_iters": 300,
+            "num_iters": 150,
             "steps_per_iter": 2000,
             "fontsize": 16,
             "figsize": (10, 10),
@@ -314,11 +314,11 @@ def main():
             "subplot_settings": {
                 0: {
                     "ylabel": 'Ave. return',
-                    "ylim": [-5., 200.],
+                    "ylim": [-5., 70.],
                 },
                 1: {
                     "ylabel": 'Ave. cum. cost',
-                    "ylim": [-5.0, 200.],
+                    "ylim": [-5.0, 20.],
                 },
                 2: {
                     "ylabel": 'Ave. succ. rate',

@@ -159,34 +159,34 @@ def main():
     num_updates_per_iteration = 5
     seeds = [str(i) for i in range(1, 4)]
     env = "safety_door_2d_narrow"
-    figname_extra = "_D=30_rExp0.2_lBorder_training"
+    figname_extra = "_D=20_rExp08_lBorder_slp=0.1_training"
     # env = "safety_cartpole_2d_narrow"
     # figname_extra = "_KL_EPS=1.0_im=0.7xth_0.2xth_training"
 
     algorithms = {
         "safety_door_2d_narrow": {
-            "CSPDL2_KL=1.0": {
+            "CSPDL2_KL=0.25": {
                 "algorithm": "constrained_self_paced",
-                "label": "CSPDL2_KL=1.0",
-                "model": "PPOLag_DELTA=30.0_DELTA_C=0.0_DIST_TYPE=gaussian_INIT_VAR=1.0_KL_EPS=1.0",
+                "label": "CSPDL2_KL=0.25",
+                "model": "PPOLag_DELTA=20.0_DELTA_C=0.0_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.25",
                 "color": "gray",
             },
-            "SPDL2_KL=1.0": {
-                "algorithm": "constrained_self_paced",
-                "label": "SPDL2_KL=1.0",
-                "model": "PPOLag_DELTA=30.0_DELTA_C=0.0_DIST_TYPE=gaussian_INIT_VAR=1.0_KL_EPS=1.0",
+            "SPDL2_KL=0.25": {
+                "algorithm": "self_paced",
+                "label": "SPDL2_KL=0.25",
+                "model": "PPOLag_DELTA=20.0_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.25",
                 "color": "tan",
             },
             "CSPDL2_KL=0.5": {
                 "algorithm": "constrained_self_paced",
                 "label": "CSPDL2_KL=0.5",
-                "model": "PPOLag_DELTA=30.0_DELTA_C=0.0_DIST_TYPE=gaussian_INIT_VAR=1.0_KL_EPS=0.5",
+                "model": "PPOLag_DELTA=20.0_DELTA_C=0.0_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.5",
                 "color": "blue",
             },
             "SPDL2_KL=0.5": {
-                "algorithm": "constrained_self_paced",
+                "algorithm": "self_paced",
                 "label": "SPDL2_KL=0.5",
-                "model": "PPOLag_DELTA=30.0_DELTA_C=0.0_DIST_TYPE=gaussian_INIT_VAR=1.0_KL_EPS=0.5",
+                "model": "PPOLag_DELTA=20.0_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.5",
                 "color": "green",
             },
         },
@@ -194,7 +194,7 @@ def main():
             "CSPDL_D=10": {
                 "algorithm": "constrained_self_paced",
                 "label": "CSPDL_D=10",
-                "model": "PPO_DELTA=40.0_DELTA_C=0.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
+                "model": "PPO_DELTA=30.0_DELTA_C=0.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
                 "color": "gray",
             },
             "CSPDL2_D=10": {

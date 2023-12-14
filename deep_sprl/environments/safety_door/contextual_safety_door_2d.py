@@ -45,8 +45,8 @@ class ContextualSafetyDoor2D(CMDP):
 
         self._dt = 0.01
         self._friction_param = 0.
-        self._r_coeff = 0.8 # 0.6 # 0.4 # 0.3 # 0.2
-        self._single_lava_pass_cost = 0.2 # 0.1 # 0.25 # 0.5 # 1.0 
+        self._r_coeff = 0.8 # 0.6
+        self._single_lava_pass_cost = 0.5 # 1.0 # 0.3 # 0.2
         self._single_border_pass_cost = 0.01 # 0.1
         self._no_border_crossing = True
         self._max_distance = torch.sqrt(torch.as_tensor(self.ROOM_WIDTH**2+8**2))
@@ -93,7 +93,7 @@ class ContextualSafetyDoor2D(CMDP):
         lava_left_end = self._context[0]-self._context[1]/2
         lava_right_end = self._context[0]+self._context[1]/2
         if ((-1.0 <= new_state[2] <= 1.0) and not (lava_left_end < new_state[0] < lava_right_end)) or \
-            ((-1.0 <= state[2] <= 1.0) and not (lava_left_end < state[0] < lava_right_end)):
+            ((-1.0 < state[2] < 1.0) and not (lava_left_end < state[0] < lava_right_end)):
             on_lava = True
 
         crash = False

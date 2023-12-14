@@ -166,10 +166,13 @@ def plot_trajectories(base_log_dir, policy_from_iteration, seeds, exp, env_name,
         if cur_algo_i < len(algorithms)-1:
             figname += "_vs_"
 
-    if not os.path.exists(os.path.join(Path(os.getcwd()).parent, "figures")):
-        os.makedirs(os.path.join(Path(os.getcwd()).parent, "figures"))
+    dir_path = os.path.join(Path(os.getcwd()).parent, "figures", f"trajvis_{experiment_name}", f"{figname}{figname_extra}",
+                            f"c=({context[0]:.2f},{context[1]:.2f})")
 
-    figpath = os.path.join(Path(os.getcwd()).parent, "figures", 
+    if not os.path.exists(dir_path):
+        os.makedirs(dir_path)
+
+    figpath = os.path.join(dir_path, 
                         f"{experiment_name}_{figname}{figname_extra}_c=({context[0]:.2f},{context[1]:.2f})"+\
                         f"_iter={policy_from_iteration}.pdf")
     print(figpath)
@@ -184,7 +187,7 @@ def main():
     rl_algorithm = "PPOLag"
     experiment_name = "safety_door_2d_narrow"
     env_name = "ContextualSafetyDoor2D-v0"
-    figname_extra = "_rExp0.8_lBorder0.01_slp=0.2"
+    figname_extra = "_rExp0.8_lBorder=0.01_slp=0.5_walled"
     discount_factor = 0.99
     
     context = load_eval_contexts(experiment_name)[0]
@@ -202,30 +205,18 @@ def main():
 
     algorithms = {
         "safety_door_2d_narrow": {
-            # "CSPDL2_KL=0.25": {
-            #     "algorithm": "constrained_self_paced",
-            #     "label": "CSPDL2_KL=0.25",
-            #     "model": "PPOLag_DELTA=20.0_DELTA_C=0.0_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.25",
-            #     "color": "gray",
-            # },
-            # "SPDL2_KL=0.25": {
-            #     "algorithm": "self_paced",
-            #     "label": "SPDL2_KL=0.25",
-            #     "model": "PPOLag_DELTA=20.0_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.25",
-            #     "color": "tan",
-            # },
-            # "CSPDL2_KL=0.5": {
-            #     "algorithm": "constrained_self_paced",
-            #     "label": "CSPDL2_KL=0.5",
-            #     "model": "PPOLag_DELTA=20.0_DELTA_C=0.0_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.5",
-            #     "color": "blue",
-            # },
-            # "SPDL2_KL=0.5": {
-            #     "algorithm": "self_paced",
-            #     "label": "SPDL2_KL=0.5",
-            #     "model": "PPOLag_DELTA=20.0_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.5",
-            #     "color": "green",
-            # },
+            "CSPDL2_K0.5_D20_DCE7.5": {
+                "algorithm": "constrained_self_paced",
+                "label": "CSPDL2_K0.5_D20_DCE7.5",
+                "model": "PPOLag_DELTA=20.0_DELTA_C=0.0_DELTA_C_EXT=7.5_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.5",
+                "color": "blue",
+            },
+            "SPDL2_K0.5_D20": {
+                "algorithm": "self_paced",
+                "label": "SPDL2_K0.5_D20",
+                "model": "PPOLag_DELTA=20.0_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.5",
+                "color": "green",
+            },
             "DEF_Lag": {
                 "algorithm": "default",
                 "label": "DEF_Lag",
@@ -238,6 +229,108 @@ def main():
                 "model": "PPO",
                 "color": "magenta",
             },
+            # "CSPDL2_K0.25_DCE7.5": {
+            #     "algorithm": "constrained_self_paced",
+            #     "label": "CSPDL2_K0.25_DCE7.5",
+            #     "model": "PPOLag_DELTA=25.0_DELTA_C=0.0_DELTA_C_EXT=7.5_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.25",
+            #     "color": "gray",
+            # },
+            # "CSPDL2_K0.25_DCE10.0": {
+            #     "algorithm": "constrained_self_paced",
+            #     "label": "CSPDL2_K0.25_DCE7.5",
+            #     "model": "PPOLag_DELTA=25.0_DELTA_C=0.0_DELTA_C_EXT=10.0_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.25",
+            #     "color": "blue",
+            # },
+            # "CSPDL2_K0.5_DCE7.5": {
+            #     "algorithm": "constrained_self_paced",
+            #     "label": "CSPDL2_K0.5_DCE7.5",
+            #     "model": "PPOLag_DELTA=25.0_DELTA_C=0.0_DELTA_C_EXT=7.5_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.5",
+            #     "color": "green",
+            # },
+            # "CSPDL2_K0.5_DCE10": {
+            #     "algorithm": "constrained_self_paced",
+            #     "label": "CSPDL2_K0.5_DCE10",
+            #     "model": "PPOLag_DELTA=25.0_DELTA_C=0.0_DELTA_C_EXT=10.0_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.5",
+            #     "color": "tan",
+            # },
+            # "CSPDL2_K0.5_D20_DCE7.5": {
+            #     "algorithm": "constrained_self_paced",
+            #     "label": "CSPDL2_K0.5_D20_DCE7.5",
+            #     "model": "PPOLag_DELTA=20.0_DELTA_C=0.0_DELTA_C_EXT=7.5_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.5",
+            #     "color": "blue",
+            # },
+            # "CSPDL2_K0.5_D20_DCE10": {
+            #     "algorithm": "constrained_self_paced",
+            #     "label": "CSPDL2_K0.5_D20_DCE10",
+            #     "model": "PPOLag_DELTA=20.0_DELTA_C=0.0_DELTA_C_EXT=10.0_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.5",
+            #     "color": "green",
+            # },
+            # "SPDL2_K0.5_D20": {
+            #     "algorithm": "self_paced",
+            #     "label": "SPDL2_K0.5_D20",
+            #     "model": "PPOLag_DELTA=20.0_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.5",
+            #     "color": "red",
+            # },
+            # "CSPDL2_K0.25_D20": {
+            #     "algorithm": "constrained_self_paced",
+            #     "label": "CSPDL2_K0.25_D20",
+            #     "model": "PPOLag_DELTA=20.0_DELTA_C=0.0_DELTA_C_EXT=7.5_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.25",
+            #     "color": "gray",
+            # },
+            # "CSPDL2_K0.25_D30": {
+            #     "algorithm": "constrained_self_paced",
+            #     "label": "CSPDL2_K0.25_D30",
+            #     "model": "PPOLag_DELTA=30.0_DELTA_C=0.0_DELTA_C_EXT=7.5_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.25",
+            #     "color": "blue",
+            # },
+            # "CSPDL2_K0.5_D20": {
+            #     "algorithm": "constrained_self_paced",
+            #     "label": "CSPDL2_K0.5_D20",
+            #     "model": "PPOLag_DELTA=20.0_DELTA_C=0.0_DELTA_C_EXT=7.5_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.5",
+            #     "color": "green",
+            # },
+            # "CSPDL2_K0.5_D30": {
+            #     "algorithm": "constrained_self_paced",
+            #     "label": "CSPDL2_K0.5_D30",
+            #     "model": "PPOLag_DELTA=30.0_DELTA_C=0.0_DELTA_C_EXT=7.5_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.5",
+            #     "color": "tan",
+            # },
+            # "SPDL2_K0.25_D20": {
+            #     "algorithm": "self_paced",
+            #     "label": "SPDL2_K0.25_D20",
+            #     "model": "PPOLag_DELTA=20.0_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.25",
+            #     "color": "gray",
+            # },
+            # "SPDL2_K0.25_D25": {
+            #     "algorithm": "self_paced",
+            #     "label": "SPDL2_K0.25_D25",
+            #     "model": "PPOLag_DELTA=25.0_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.25",
+            #     "color": "red",
+            # },
+            # "SPDL2_K0.25_D30": {
+            #     "algorithm": "self_paced",
+            #     "label": "SPDL2_K0.25_D30",
+            #     "model": "PPOLag_DELTA=30.0_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.25",
+            #     "color": "blue",
+            # },
+            # "SPDL2_K0.5_D20": {
+            #     "algorithm": "self_paced",
+            #     "label": "SPDL2_K0.5_D20",
+            #     "model": "PPOLag_DELTA=20.0_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.5",
+            #     "color": "green",
+            # },
+            # "SPDL2_K0.5_D25": {
+            #     "algorithm": "self_paced",
+            #     "label": "SPDL2_K0.5_D25",
+            #     "model": "PPOLag_DELTA=25.0_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.5",
+            #     "color": "magenta",
+            # },
+            # "SPDL2_K0.5_D30": {
+            #     "algorithm": "self_paced",
+            #     "label": "SPDL2_K0.5_D30",
+            #     "model": "PPOLag_DELTA=30.0_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.5",
+            #     "color": "tan",
+            # },
         },
     }
 

@@ -11,7 +11,7 @@ sys.path.insert(1, os.path.join(sys.path[0], '..'))
 os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 
 def update_results(res_dict, res):
-    res_dict["mid"].append(np.mean(res, axis=0))
+    res_dict["mid"].append(np.median(res, axis=0))
     res_dict["qlow"].append(np.quantile(res, 0.25, axis=0))
     res_dict["qhigh"].append(np.quantile(res, 0.75, axis=0))
     res_dict["min"].append(np.min(res, axis=0))
@@ -36,11 +36,12 @@ def get_results(base_dir, seeds, iterations):
                 rets.append(np.mean(disc_rewards))
                 costs.append(np.mean(cost))
                 succs.append(np.mean(success))
-            
         if len(rets) > 0:
             update_results(ret_dict, np.array(rets))
             update_results(cost_dict, np.array(costs))
             update_results(succ_dict, np.array(succs))
+        if iteration == 145:
+            print(rets, costs, succs)
     return ret_dict, cost_dict, succ_dict
 
 def plot_results(base_log_dir, num_updates_per_iteration, seeds, env, setting, algorithms, figname_extra):
@@ -91,11 +92,11 @@ def plot_results(base_log_dir, num_updates_per_iteration, seeds, env, setting, a
         alg_exp_mid[cur_algo] = expected_return_mid[-1]
 
         axes[0].plot(iterations_step, expected_return_mid, color=color, linewidth=2.0, label=f"{label}",marker=".")
-        # axes[0].fill_between(iterations_step, expected_return_qlow, expected_return_qhigh, color=color, alpha=0.4)
-        axes[0].fill_between(iterations_step, expected_return_min, expected_return_max, color=color, alpha=0.4)
+        axes[0].fill_between(iterations_step, expected_return_qlow, expected_return_qhigh, color=color, alpha=0.4)
+        axes[0].fill_between(iterations_step, expected_return_min, expected_return_max, color=color, alpha=0.2)
         axes[1].plot(iterations_step, expected_cum_cost_mid, color=color, linewidth=2.0, marker=".")
-        # axes[1].fill_between(iterations_step, expected_cum_cost_qlow, expected_cum_cost_qhigh, color=color, alpha=0.4)
-        axes[1].fill_between(iterations_step, expected_cum_cost_min, expected_cum_cost_max, color=color, alpha=0.4)
+        axes[1].fill_between(iterations_step, expected_cum_cost_qlow, expected_cum_cost_qhigh, color=color, alpha=0.4)
+        axes[1].fill_between(iterations_step, expected_cum_cost_min, expected_cum_cost_max, color=color, alpha=0.2)
         if plot_success:            
             expected_success_mid = succ["mid"]
             expected_success_qlow = succ["qlow"]
@@ -104,8 +105,8 @@ def plot_results(base_log_dir, num_updates_per_iteration, seeds, env, setting, a
             expected_success_max = succ["max"]
 
             axes[2].plot(iterations_step, expected_success_mid, color=color, linewidth=2.0, marker=".")
-            # axes[2].fill_between(iterations_step, expected_success_qlow, expected_success_qhigh, color=color, alpha=0.4)
-            axes[2].fill_between(iterations_step, expected_success_min, expected_success_max, color=color, alpha=0.4)
+            axes[2].fill_between(iterations_step, expected_success_qlow, expected_success_qhigh, color=color, alpha=0.4)
+            axes[2].fill_between(iterations_step, expected_success_min, expected_success_max, color=color, alpha=0.2)
 
     for i, ax in enumerate(axes):
         ax.ticklabel_format(axis='x', style='sci', scilimits=(5, 6), useMathText=True)
@@ -157,38 +158,135 @@ def plot_results(base_log_dir, num_updates_per_iteration, seeds, env, setting, a
 def main():
     base_log_dir = os.path.join(Path(os.getcwd()).parent, "logs")
     num_updates_per_iteration = 5
-    seeds = [str(i) for i in range(1, 4)]
+    # seeds = [str(i) for i in range(1, 16)]
+    # seeds = [str(i) for i in range(1, 8)] + ["10", "11", "14", "15"] 
+    seeds = [str(i) for i in range(1, 6)] + ["7", "10", "11", "13", "14"] 
     env = "safety_door_2d_narrow"
-    figname_extra = "_D=20_rExp08_lBorder_slp=0.1_training"
-    # env = "safety_cartpole_2d_narrow"
-    # figname_extra = "_KL_EPS=1.0_im=0.7xth_0.2xth_training"
+    figname_extra = "_rExp0.8_lBorder=0.01_slp=0.5_walled_10seeds2"
+
 
     algorithms = {
         "safety_door_2d_narrow": {
-            "CSPDL2_KL=0.25": {
+            "CSPDL2_K0.5_D20_DCE10": {
                 "algorithm": "constrained_self_paced",
-                "label": "CSPDL2_KL=0.25",
-                "model": "PPOLag_DELTA=20.0_DELTA_C=0.0_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.25",
+                "label": "CSPDL2_K0.5_D20_DCE10",
+                "model": "PPOLag_DELTA=20.0_DELTA_C=0.0_DELTA_C_EXT=10.0_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.5",
                 "color": "gray",
             },
-            "SPDL2_KL=0.25": {
-                "algorithm": "self_paced",
-                "label": "SPDL2_KL=0.25",
-                "model": "PPOLag_DELTA=20.0_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.25",
-                "color": "tan",
-            },
-            "CSPDL2_KL=0.5": {
+            "CSPDL2_K0.5_D20_DCE7.5": {
                 "algorithm": "constrained_self_paced",
-                "label": "CSPDL2_KL=0.5",
-                "model": "PPOLag_DELTA=20.0_DELTA_C=0.0_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.5",
+                "label": "CSPDL2_K0.5_D20_DCE7.5",
+                "model": "PPOLag_DELTA=20.0_DELTA_C=0.0_DELTA_C_EXT=7.5_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.5",
                 "color": "blue",
             },
-            "SPDL2_KL=0.5": {
+            "SPDL2_K0.5_D20": {
                 "algorithm": "self_paced",
-                "label": "SPDL2_KL=0.5",
+                "label": "SPDL2_K0.5_D20",
                 "model": "PPOLag_DELTA=20.0_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.5",
                 "color": "green",
             },
+            # "CSPDL2_K0.25_DCE7.5": {
+            #     "algorithm": "constrained_self_paced",
+            #     "label": "CSPDL2_K0.25_DCE7.5",
+            #     "model": "PPOLag_DELTA=25.0_DELTA_C=0.0_DELTA_C_EXT=7.5_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.25",
+            #     "color": "gray",
+            # },
+            # "CSPDL2_K0.25_DCE10.0": {
+            #     "algorithm": "constrained_self_paced",
+            #     "label": "CSPDL2_K0.25_DCE7.5",
+            #     "model": "PPOLag_DELTA=25.0_DELTA_C=0.0_DELTA_C_EXT=10.0_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.25",
+            #     "color": "blue",
+            # },
+            # "CSPDL2_K0.5_DCE7.5": {
+            #     "algorithm": "constrained_self_paced",
+            #     "label": "CSPDL2_K0.5_DCE7.5",
+            #     "model": "PPOLag_DELTA=25.0_DELTA_C=0.0_DELTA_C_EXT=7.5_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.5",
+            #     "color": "green",
+            # },
+            # "CSPDL2_K0.5_DCE10": {
+            #     "algorithm": "constrained_self_paced",
+            #     "label": "CSPDL2_K0.5_DCE10",
+            #     "model": "PPOLag_DELTA=25.0_DELTA_C=0.0_DELTA_C_EXT=10.0_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.5",
+            #     "color": "tan",
+            # },
+            # "CSPDL2_K0.5_D20_DCE7.5": {
+            #     "algorithm": "constrained_self_paced",
+            #     "label": "CSPDL2_K0.5_D20_DCE7.5",
+            #     "model": "PPOLag_DELTA=20.0_DELTA_C=0.0_DELTA_C_EXT=7.5_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.5",
+            #     "color": "blue",
+            # },
+            # "CSPDL2_K0.5_D20_DCE10": {
+            #     "algorithm": "constrained_self_paced",
+            #     "label": "CSPDL2_K0.5_D20_DCE10",
+            #     "model": "PPOLag_DELTA=20.0_DELTA_C=0.0_DELTA_C_EXT=10.0_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.5",
+            #     "color": "green",
+            # },
+            # "SPDL2_K0.5_D20": {
+            #     "algorithm": "self_paced",
+            #     "label": "SPDL2_K0.5_D20",
+            #     "model": "PPOLag_DELTA=20.0_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.5",
+            #     "color": "red",
+            # },
+            # "CSPDL2_K0.25_D20": {
+            #     "algorithm": "constrained_self_paced",
+            #     "label": "CSPDL2_K0.25_D20",
+            #     "model": "PPOLag_DELTA=20.0_DELTA_C=0.0_DELTA_C_EXT=7.5_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.25",
+            #     "color": "gray",
+            # },
+            # "CSPDL2_K0.25_D30": {
+            #     "algorithm": "constrained_self_paced",
+            #     "label": "CSPDL2_K0.25_D30",
+            #     "model": "PPOLag_DELTA=30.0_DELTA_C=0.0_DELTA_C_EXT=7.5_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.25",
+            #     "color": "blue",
+            # },
+            # "CSPDL2_K0.5_D20": {
+            #     "algorithm": "constrained_self_paced",
+            #     "label": "CSPDL2_K0.5_D20",
+            #     "model": "PPOLag_DELTA=20.0_DELTA_C=0.0_DELTA_C_EXT=7.5_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.5",
+            #     "color": "green",
+            # },
+            # "CSPDL2_K0.5_D30": {
+            #     "algorithm": "constrained_self_paced",
+            #     "label": "CSPDL2_K0.5_D30",
+            #     "model": "PPOLag_DELTA=30.0_DELTA_C=0.0_DELTA_C_EXT=7.5_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.5",
+            #     "color": "tan",
+            # },
+            # "SPDL2_K0.25_D20": {
+            #     "algorithm": "self_paced",
+            #     "label": "SPDL2_K0.25_D20",
+            #     "model": "PPOLag_DELTA=20.0_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.25",
+            #     "color": "gray",
+            # },
+            # "SPDL2_K0.25_D25": {
+            #     "algorithm": "self_paced",
+            #     "label": "SPDL2_K0.25_D25",
+            #     "model": "PPOLag_DELTA=25.0_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.25",
+            #     "color": "red",
+            # },
+            # "SPDL2_K0.25_D30": {
+            #     "algorithm": "self_paced",
+            #     "label": "SPDL2_K0.25_D30",
+            #     "model": "PPOLag_DELTA=30.0_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.25",
+            #     "color": "blue",
+            # },
+            # "SPDL2_K0.5_D20": {
+            #     "algorithm": "self_paced",
+            #     "label": "SPDL2_K0.5_D20",
+            #     "model": "PPOLag_DELTA=20.0_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.5",
+            #     "color": "green",
+            # },
+            # "SPDL2_K0.5_D25": {
+            #     "algorithm": "self_paced",
+            #     "label": "SPDL2_K0.5_D25",
+            #     "model": "PPOLag_DELTA=25.0_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.5",
+            #     "color": "magenta",
+            # },
+            # "SPDL2_K0.5_D30": {
+            #     "algorithm": "self_paced",
+            #     "label": "SPDL2_K0.5_D30",
+            #     "model": "PPOLag_DELTA=30.0_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.5",
+            #     "color": "tan",
+            # },
         },
         "safety_cartpole_2d_narrow": {
             "CSPDL_D=10": {
@@ -200,7 +298,7 @@ def main():
             "CSPDL2_D=10": {
                 "algorithm": "constrained_self_paced",
                 "label": "CSPDL2_D=10",
-                "model": "PPOLag_DELTA=10.0_DELTA_C=0.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
+                "model": "PPOLag_DELTA=7.5_DELTA_C=0.0_DIST_TYPE=gaussian_INIT_VAR=0.1_KL_EPS=1.0",
                 "color": "tan",
             },
             "CSPDL_D=15": {
@@ -259,19 +357,19 @@ def main():
     settings = {
         "safety_door_2d_narrow":{
             "plot_success": True,
-            "num_iters": 300,
-            "steps_per_iter": 2000,
+            "num_iters": 150,
+            "steps_per_iter": 4000,
             "fontsize": 16,
             "figsize": (10, 10),
             "bbox_to_anchor": (.5, 1.05),
             "subplot_settings": {
                 0: {
                     "ylabel": 'Ave. return',
-                    "ylim": [-5., 200.],
+                    "ylim": [-5., 70.],
                 },
                 1: {
                     "ylabel": 'Ave. cum. cost',
-                    "ylim": [-5.0, 200.],
+                    "ylim": [-5.0, 20.],
                 },
                 2: {
                     "ylabel": 'Ave. succ. rate',

@@ -54,15 +54,15 @@ class SafetyDoor2DExperiment(AbstractExperiment):
 
     STD_LOWER_BOUND = np.array([0.1, 0.1])
     KL_THRESHOLD = 8000.
-    KL_EPS = 1.0 # 0.5
-    DELTA = 30.0
+    KL_EPS = 0.5
+    DELTA = 20.0
     DELTA_C = 0.0
-    DELTA_C_EXT = 0.0
+    DELTA_C_EXT = 7.5
     METRIC_EPS = 0.5
-    EP_PER_UPDATE = 10 # 20 # 100 # 200
+    EP_PER_UPDATE = 20 # 10
     
-    NUM_ITER = 150 # 300
-    STEPS_PER_ITER = 2000 # 4000
+    NUM_ITER = 250 # 150 # 300
+    STEPS_PER_ITER = 4000 # 2000
     DISCOUNT_FACTOR = 0.99
     LAM = 0.95 # 0.99 
 
@@ -197,7 +197,7 @@ class SafetyDoor2DExperiment(AbstractExperiment):
             Learner.PPO:  {
                 'algo_cfgs': {
                     'steps_per_epoch': self.STEPS_PER_ITER, # to eval, log, actor scheduler step
-                    'update_iters': 4, #  10, # gradient steps
+                    'update_iters': 12, # 8, # 4, #  10, # gradient steps
                     'batch_size': 64, # 128, 
                     'target_kl': 0.02,
                     'entropy_coef': 0.0,
@@ -233,7 +233,7 @@ class SafetyDoor2DExperiment(AbstractExperiment):
             Learner.PPOLag:  {
                 'algo_cfgs': {
                     'steps_per_epoch': self.STEPS_PER_ITER, # to eval, log, actor scheduler step
-                    'update_iters': 4, # 10, # gradient steps
+                    'update_iters': 12, # 8, # 4, # gradient steps
                     'batch_size': 64, # 128,
                     'target_kl': 0.02,
                     'entropy_coef': 0.0,
@@ -298,12 +298,12 @@ class SafetyDoor2DExperiment(AbstractExperiment):
             'model_cfgs':  {
                 'weight_initialization_mode': "kaiming_uniform",
                 'actor': {
-                    'hidden_sizes': [64, 64], # [128, 128, 128],
+                    'hidden_sizes': [64, 64], # [64, 64], 
                     'activation': "tanh",
                     'lr': 3e-4,
                 },
                 'critic': {
-                    'hidden_sizes': [64, 64], # [128, 128, 128],
+                    'hidden_sizes': [64, 64], # [128, 128], 
                     'activation': "tanh",
                     'lr': 3e-4,
                 },

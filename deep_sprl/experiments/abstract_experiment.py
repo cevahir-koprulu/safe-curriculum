@@ -272,7 +272,7 @@ class AbstractExperiment(ABC):
                              "ACL_ETA": float, "PLR_REPLAY_RATE": float, "PLR_BETA": float, "PLR_RHO": float,
                              "VDS_NQ": int, "VDS_LR": float, "VDS_EPOCHS": int, "VDS_BATCHES": int,
                              "DIST_TYPE": str, "TARGET_TYPE": str, "KL_EPS": float, 
-                             "EP_PER_UPDATE": int, "INIT_VAR":float, "DELTA_C": float,
+                             "EP_PER_UPDATE": int, "INIT_VAR":float, "DELTA_C": float, "DELTA_C_EXT": float,
         }
         for key in sorted(self.parameters.keys()):
             if key not in allowed_overrides:

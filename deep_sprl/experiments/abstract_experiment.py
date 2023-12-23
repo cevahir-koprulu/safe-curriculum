@@ -27,6 +27,7 @@ class CurriculumType(Enum):
     PLR = 8
     VDS = 9
     ConstrainedSelfPaced = 10
+    ConstrainedWasserstein = 11
 
     def __str__(self):
         if self.goal_gan():
@@ -47,6 +48,8 @@ class CurriculumType(Enum):
             return "vds"
         elif self.constrained_self_paced():
             return "constrained_self_paced"
+        elif self.constrained_wasserstein():
+            return "constrained_wasserstein"
         else:
             return "random"
 
@@ -80,6 +83,9 @@ class CurriculumType(Enum):
     def constrained_self_paced(self):
         return self.value == CurriculumType.ConstrainedSelfPaced.value
 
+    def constrained_wasserstein(self):
+        return self.value == CurriculumType.ConstrainedWasserstein.value
+
     @staticmethod
     def from_string(string):
         if string == str(CurriculumType.GoalGAN):
@@ -102,6 +108,8 @@ class CurriculumType(Enum):
             return CurriculumType.VDS
         elif string == str(CurriculumType.ConstrainedSelfPaced):
             return CurriculumType.ConstrainedSelfPaced
+        elif string == str(CurriculumType.ConstrainedWasserstein):
+            return CurriculumType.ConstrainedWasserstein
         else:
             raise RuntimeError("Invalid string: '" + string + "'")
 
@@ -220,8 +228,11 @@ class AbstractExperiment(ABC):
                      CurriculumType.ACL: ["ACL_EPS", "ACL_ETA"],
                      CurriculumType.PLR: ["PLR_REPLAY_RATE", "PLR_BETA", "PLR_RHO"],
                      CurriculumType.VDS: ["VDS_NQ", "VDS_LR", "VDS_EPOCHS", "VDS_BATCHES"],
-                    CurriculumType.ConstrainedSelfPaced: ["DELTA_C", "DELTA_C_EXT", "DELTA", 
-                                                          "KL_EPS", "DIST_TYPE", "INIT_VAR"]}
+                     CurriculumType.ConstrainedSelfPaced: ["DELTA_C", "DELTA_C_EXT", "DELTA", 
+                                                          "KL_EPS", "DIST_TYPE", "INIT_VAR"],
+                    CurriculumType.ConstrainedWasserstein: ["DELTA_C", "DELTA_C_EXT", "DELTA", "METRIC_EPS",
+                                                            "ATP", "CAS", "RAS"],
+                                                          }
 
     def __init__(self, base_log_dir, curriculum_name, learner_name, parameters, seed, device, view=False):
         self.device = device
@@ -273,6 +284,7 @@ class AbstractExperiment(ABC):
                              "VDS_NQ": int, "VDS_LR": float, "VDS_EPOCHS": int, "VDS_BATCHES": int,
                              "DIST_TYPE": str, "TARGET_TYPE": str, "KL_EPS": float, 
                              "EP_PER_UPDATE": int, "INIT_VAR":float, "DELTA_C": float, "DELTA_C_EXT": float,
+                             "METRIC_EPS": float,
         }
         for key in sorted(self.parameters.keys()):
             if key not in allowed_overrides:
@@ -342,8 +354,8 @@ class AbstractExperiment(ABC):
             performance_log_dir = os.path.join(iteration_log_dir, f"{performance_files[eval_type]}.npy")
             model_path = os.path.join(omnisafe_log_dir, 'torch_save', saved_model)
             eval_type_str = performance_files[eval_type][len("performance"):]
-            # if not os.path.exists(performance_log_dir):
-            if True:
+            if not os.path.exists(performance_log_dir):
+            # if True:
                 disc_rewards, eval_contexts, context_p, successful_eps, costs = self.evaluate_learner(
                     model_path=model_path,
                     eval_type=eval_type_str,
@@ -375,7 +387,8 @@ class AbstractExperiment(ABC):
         idxs = np.argsort(unsorted_models)
         sorted_models = np.array(omnisafe_saved_models)[idxs].tolist()
         
-        if self.curriculum.self_paced() or self.curriculum.constrained_self_paced():
+        if self.curriculum.self_paced() or self.curriculum.constrained_self_paced() or \
+            self.curriculum.wasserstein() or self.curriculum.constrained_wasserstein():
             for iteration_dir, saved_model in zip(sorted_iteration_dirs, sorted_models):
                 print(f"Evaluating wrt context distribution in {iteration_dir}")
                 iteration_log_dir = os.path.join(log_dir, iteration_dir)
@@ -384,13 +397,15 @@ class AbstractExperiment(ABC):
                 model_path = os.path.join(omnisafe_log_dir, 'torch_save', saved_model)
                 training_contexts = np.array([teacher.sample() for _ in range(num_contexts)])
                 performance_log_dir = os.path.join(iteration_log_dir, "performance_training.npy")
-                # if not os.path.exists(performance_log_dir):
-                if True:
+                if not os.path.exists(performance_log_dir):
+                # if True:
                     disc_rewards, successful_eps, costs = self.evaluate_training(
                         model_path=model_path,
                         training_contexts=training_contexts,
                     )
-                    context_p = teacher.context_dist.log_pdf_t(torch.from_numpy(training_contexts)).detach().numpy() 
+                    context_p = np.zeros((num_contexts, 1))
+                    if self.curriculum.self_paced() or self.curriculum.constrained_self_paced():
+                        context_p = teacher.target_dist.log_pdf_t(torch.from_numpy(training_contexts)).detach().numpy()
                     print(f"Evaluated: {np.mean(disc_rewards)}")
                     disc_rewards = np.array(disc_rewards)
                     stats = np.ones((num_contexts, 1))*int(iteration_dir[len("iteration")+1:])

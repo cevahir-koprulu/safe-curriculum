@@ -61,7 +61,9 @@ class ConstrainedSelfPacedWrapper(BaseWrapper):
         cost = undiscounted_cost if self.use_undiscounted_reward else discounted_cost
         self.context_buffer.update_buffer((cur_initial_state, cur_context, ret, cost))
         if hasattr(self.teacher, "on_rollout_end"):
-            self.teacher.on_rollout_end(cur_context, ret, cost)
+            self.teacher.on_rollout_end(cur_context, ret, 
+                                        cost=discounted_cost if not self.use_undiscounted_reward \
+                                            else undiscounted_cost)
         
         if len(self.context_buffer) >= self.episodes_per_update and (
                 self.algorithm_iteration % self.step_divider <= (

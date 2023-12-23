@@ -10,8 +10,8 @@ def main():
     parser.add_argument("--type", type=str, default="self_paced",
                         choices=["default", "random", 
                                  "constrained_self_paced", "self_paced", 
-                                 "wasserstein", "alp_gmm",
-                                 "goal_gan", "acl", "plr", "vds"])
+                                 "wasserstein", "constrained_wasserstein", 
+                                 "alp_gmm", "goal_gan", "acl", "plr", "vds"])
     parser.add_argument("--learner", type=str, default="PPO", choices=["PPO", "SAC", "PPOLag"])
     parser.add_argument("--env", type=str, default="safety_door_2d",
                         choices=["safety_point_mass_1d", "safety_point_mass_2d", "safety_cartpole_2d",

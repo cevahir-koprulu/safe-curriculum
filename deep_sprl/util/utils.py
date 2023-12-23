@@ -11,10 +11,18 @@ def update_params(d, u):
     Returns:
         TYPE: A new dictionary d
     """
-    d = copy.deepcopy(d)
+    d = d.copy() # copy.deepcopy(d)
     for k, v in u.items():
         if isinstance(v, collections.abc.Mapping):
             d[k] = update_params(d.get(k, {}), v)
         else:
             d[k] = v
     return d
+
+def verbose_print(verbose, s):
+    if verbose:
+        print(s)
+
+def verbose_input(verbose, s):
+    if verbose:
+        input(s)

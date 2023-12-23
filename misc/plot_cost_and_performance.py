@@ -17,10 +17,12 @@ def update_results(res_dict, res):
     res_dict["min"].append(np.min(res, axis=0))
     res_dict["max"].append(np.max(res, axis=0))
 
-def get_results(base_dir, seeds, iterations):
+def get_results(base_dir, seeds, iterations, cost_th=0.):
     ret_dict = {"mid": [], "qlow": [], "qhigh": [], "min": [], "max": []}
     cost_dict = {"mid": [], "qlow": [], "qhigh": [], "min": [], "max": []}
     succ_dict = {"mid": [], "qlow": [], "qhigh": [], "min": [], "max": []}
+    acc_ex_cost_dict = {"mid": [], "qlow": [], "qhigh": [], "min": [], "max": []}
+    acc_ex_costs = {seed: 0. for seed in seeds}
     for iteration in iterations:
         rets = []
         costs = []
@@ -35,13 +37,16 @@ def get_results(base_dir, seeds, iterations):
                 rets.append(np.mean(disc_rewards))
                 costs.append(np.mean(cost))
                 succs.append(np.mean(success))
+                acc_ex_costs[seed] += max(np.mean(cost)-cost_th, 0.)
+            else:
+                acc_ex_costs.pop(seed, None)
         if len(rets) > 0:
             update_results(ret_dict, np.array(rets))
             update_results(cost_dict, np.array(costs))
             update_results(succ_dict, np.array(succs))
-        if iteration == 145:
-            print(rets, costs, succs)
-    return ret_dict, cost_dict, succ_dict
+            update_results(acc_ex_cost_dict, np.array(list(acc_ex_costs.values())))
+    print(rets, costs, succs)
+    return ret_dict, cost_dict, succ_dict, acc_ex_cost_dict
 
 def plot_results(base_log_dir, num_updates_per_iteration, seeds, env, setting, algorithms, figname_extra):
     plt.rcParams['font.family'] = 'serif'
@@ -58,7 +63,7 @@ def plot_results(base_log_dir, num_updates_per_iteration, seeds, env, setting, a
     iterations = np.arange(0, num_iters, num_updates_per_iteration, dtype=int)
     iterations_step = iterations*steps_per_iter
 
-    fig, axes = plt.subplots(2+int(plot_success),1, figsize=figsize, constrained_layout=True)
+    fig, axes = plt.subplots(3+int(plot_success),1, figsize=figsize, constrained_layout=True)
     alg_exp_mid = {}
     plt.suptitle("Evaluation wrt target distribution")
 
@@ -71,10 +76,11 @@ def plot_results(base_log_dir, num_updates_per_iteration, seeds, env, setting, a
 
         base_dir = os.path.join(base_log_dir, env, algorithm, model)
         print(base_dir)
-        ret, cost, succ = get_results(
+        ret, cost, succ, acc_cost = get_results(
             base_dir=base_dir,
             seeds=seeds,
             iterations=iterations,
+            cost_th=setting["cost_threshold"],
         )
         expected_return_mid = ret["mid"]
         expected_return_qlow = ret["qlow"]
@@ -88,6 +94,11 @@ def plot_results(base_log_dir, num_updates_per_iteration, seeds, env, setting, a
         expected_cum_cost_min = cost["min"]
         expected_cum_cost_max = cost["max"]
 
+        expected_acc_ex_cost_mid = acc_cost["mid"]
+        expected_acc_ex_cost_qlow = acc_cost["qlow"]
+        expected_acc_ex_cost_qhigh = acc_cost["qhigh"]
+        expected_acc_ex_cost_min = acc_cost["min"]
+        expected_acc_ex_cost_max = acc_cost["max"]
 
         alg_exp_mid[cur_algo] = expected_return_mid[-1]
 
@@ -97,15 +108,21 @@ def plot_results(base_log_dir, num_updates_per_iteration, seeds, env, setting, a
         axes[1].plot(iterations_step, expected_cum_cost_mid, color=color, linewidth=2.0, marker=".")
         axes[1].fill_between(iterations_step, expected_cum_cost_qlow, expected_cum_cost_qhigh, color=color, alpha=0.2)
         axes[1].fill_between(iterations_step, expected_cum_cost_min, expected_cum_cost_max, color=color, alpha=0.4)
+        axes[1].plot(iterations_step, expected_cum_cost_mid, color=color, linewidth=2.0, marker=".")
+        axes[1].fill_between(iterations_step, expected_cum_cost_qlow, expected_cum_cost_qhigh, color=color, alpha=0.2)
+        axes[1].fill_between(iterations_step, expected_cum_cost_min, expected_cum_cost_max, color=color, alpha=0.4)
+        axes[2].plot(iterations_step, expected_acc_ex_cost_mid, color=color, linewidth=2.0, marker=".")
+        axes[2].fill_between(iterations_step, expected_acc_ex_cost_qlow, expected_acc_ex_cost_qhigh, color=color, alpha=0.2)
+        axes[2].fill_between(iterations_step, expected_acc_ex_cost_min, expected_acc_ex_cost_max, color=color, alpha=0.4)
         if plot_success:            
             expected_success_mid = succ["mid"]
             expected_success_qlow = succ["qlow"]
             expected_success_qhigh = succ["qhigh"]
             expected_success_min = succ["min"]
             expected_success_max = succ["max"]
-            axes[2].plot(iterations_step, expected_success_mid, color=color, linewidth=2.0, marker=".")
-            axes[2].fill_between(iterations_step, expected_success_qlow, expected_success_qhigh, color=color, alpha=0.4)
-            axes[2].fill_between(iterations_step, expected_success_min, expected_success_max, color=color, alpha=0.2)
+            axes[-1].plot(iterations_step, expected_success_mid, color=color, linewidth=2.0, marker=".")
+            axes[-1].fill_between(iterations_step, expected_success_qlow, expected_success_qhigh, color=color, alpha=0.4)
+            axes[-1].fill_between(iterations_step, expected_success_min, expected_success_max, color=color, alpha=0.2)
 
     for i, ax in enumerate(axes):
         ax.ticklabel_format(axis='x', style='sci', scilimits=(5, 6), useMathText=True)
@@ -157,145 +174,38 @@ def plot_results(base_log_dir, num_updates_per_iteration, seeds, env, setting, a
 def main():
     base_log_dir = os.path.join(Path(os.getcwd()).parent, "logs")
     num_updates_per_iteration = 5
+    seeds = [str(i) for i in range(1, 11)]
     # seeds = [str(i) for i in range(1, 16)]
     # seeds = [str(i) for i in range(1, 8)] + ["10", "11", "14", "15"] 
-    seeds = [str(i) for i in range(1, 6)] + ["7", "10", "11", "13", "14"] 
+    # seeds = [str(i) for i in range(1, 6)] + ["7", "10", "11", "13", "14"] 
     env = "safety_door_2d_narrow"
-    figname_extra = "_rExp0.8_lBorder=0.01_slp=0.5_walled_10seeds2"
+    figname_extra = "_DCE=2.5_MEPS=0.5_rExp0.8_lBorder=0.01_slp=0.5_walled_ANNEALED_excess_10seeds"
 
     algorithms = {
         "safety_door_2d_narrow": {
-            "CSPDL2_K0.5_D20_DCE10": {
-                "algorithm": "constrained_self_paced",
-                "label": "CSPDL2_K0.5_D20_DCE10",
-                "model": "PPOLag_DELTA=20.0_DELTA_C=0.0_DELTA_C_EXT=10.0_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.5",
-                "color": "gray",
-            },
-            "CSPDL2_K0.5_D20_DCE7.5": {
-                "algorithm": "constrained_self_paced",
-                "label": "CSPDL2_K0.5_D20_DCE7.5",
-                "model": "PPOLag_DELTA=20.0_DELTA_C=0.0_DELTA_C_EXT=7.5_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.5",
+            "CCURROTL_D=30": {
+                "algorithm": "constrained_wasserstein",
+                "label": "CCURROTL_D=30",
+                "model": "PPOLag_DELTA=30.0_DELTA_C=0.0_DELTA_C_EXT=2.5_METRIC_EPS=0.5",
                 "color": "blue",
             },
-            "SPDL2_K0.5_D20": {
-                "algorithm": "self_paced",
-                "label": "SPDL2_K0.5_D20",
-                "model": "PPOLag_DELTA=20.0_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.5",
+            "CCURROTL_D=25": {
+                "algorithm": "constrained_wasserstein",
+                "label": "CCURROTL_D=25",
+                "model": "PPOLag_DELTA=25.0_DELTA_C=0.0_DELTA_C_EXT=2.5_METRIC_EPS=0.5",
                 "color": "green",
             },
-            "DEF_Lag": {
-                "algorithm": "default",
-                "label": "DEF_Lag",
-                "model": "PPOLag",
-                "color": "red",
-            },
-            "DEF": {
-                "algorithm": "default",
-                "label": "Default",
-                "model": "PPO",
-                "color": "magenta",
-            },
-            # "CSPDL2_K0.25_DCE7.5": {
-            #     "algorithm": "constrained_self_paced",
-            #     "label": "CSPDL2_K0.25_DCE7.5",
-            #     "model": "PPOLag_DELTA=25.0_DELTA_C=0.0_DELTA_C_EXT=7.5_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.25",
-            #     "color": "gray",
-            # },
-            # "CSPDL2_K0.25_DCE10.0": {
-            #     "algorithm": "constrained_self_paced",
-            #     "label": "CSPDL2_K0.25_DCE7.5",
-            #     "model": "PPOLag_DELTA=25.0_DELTA_C=0.0_DELTA_C_EXT=10.0_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.25",
-            #     "color": "blue",
-            # },
-            # "CSPDL2_K0.5_DCE7.5": {
-            #     "algorithm": "constrained_self_paced",
-            #     "label": "CSPDL2_K0.5_DCE7.5",
-            #     "model": "PPOLag_DELTA=25.0_DELTA_C=0.0_DELTA_C_EXT=7.5_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.5",
-            #     "color": "green",
-            # },
-            # "CSPDL2_K0.5_DCE10": {
-            #     "algorithm": "constrained_self_paced",
-            #     "label": "CSPDL2_K0.5_DCE10",
-            #     "model": "PPOLag_DELTA=25.0_DELTA_C=0.0_DELTA_C_EXT=10.0_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.5",
-            #     "color": "tan",
-            # },
-            # "CSPDL2_K0.5_D20_DCE7.5": {
-            #     "algorithm": "constrained_self_paced",
-            #     "label": "CSPDL2_K0.5_D20_DCE7.5",
-            #     "model": "PPOLag_DELTA=20.0_DELTA_C=0.0_DELTA_C_EXT=7.5_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.5",
-            #     "color": "blue",
-            # },
-            # "CSPDL2_K0.5_D20_DCE10": {
-            #     "algorithm": "constrained_self_paced",
-            #     "label": "CSPDL2_K0.5_D20_DCE10",
-            #     "model": "PPOLag_DELTA=20.0_DELTA_C=0.0_DELTA_C_EXT=10.0_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.5",
-            #     "color": "green",
-            # },
-            # "SPDL2_K0.5_D20": {
-            #     "algorithm": "self_paced",
-            #     "label": "SPDL2_K0.5_D20",
-            #     "model": "PPOLag_DELTA=20.0_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.5",
+            # "DEF_Lag": {
+            #     "algorithm": "default",
+            #     "label": "DEF_Lag",
+            #     "model": "PPOLag",
             #     "color": "red",
             # },
-            # "CSPDL2_K0.25_D20": {
-            #     "algorithm": "constrained_self_paced",
-            #     "label": "CSPDL2_K0.25_D20",
-            #     "model": "PPOLag_DELTA=20.0_DELTA_C=0.0_DELTA_C_EXT=7.5_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.25",
-            #     "color": "gray",
-            # },
-            # "CSPDL2_K0.25_D30": {
-            #     "algorithm": "constrained_self_paced",
-            #     "label": "CSPDL2_K0.25_D30",
-            #     "model": "PPOLag_DELTA=30.0_DELTA_C=0.0_DELTA_C_EXT=7.5_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.25",
-            #     "color": "blue",
-            # },
-            # "CSPDL2_K0.5_D20": {
-            #     "algorithm": "constrained_self_paced",
-            #     "label": "CSPDL2_K0.5_D20",
-            #     "model": "PPOLag_DELTA=20.0_DELTA_C=0.0_DELTA_C_EXT=7.5_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.5",
-            #     "color": "green",
-            # },
-            # "CSPDL2_K0.5_D30": {
-            #     "algorithm": "constrained_self_paced",
-            #     "label": "CSPDL2_K0.5_D30",
-            #     "model": "PPOLag_DELTA=30.0_DELTA_C=0.0_DELTA_C_EXT=7.5_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.5",
-            #     "color": "tan",
-            # },
-            # "SPDL2_K0.25_D20": {
-            #     "algorithm": "self_paced",
-            #     "label": "SPDL2_K0.25_D20",
-            #     "model": "PPOLag_DELTA=20.0_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.25",
-            #     "color": "gray",
-            # },
-            # "SPDL2_K0.25_D25": {
-            #     "algorithm": "self_paced",
-            #     "label": "SPDL2_K0.25_D25",
-            #     "model": "PPOLag_DELTA=25.0_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.25",
-            #     "color": "red",
-            # },
-            # "SPDL2_K0.25_D30": {
-            #     "algorithm": "self_paced",
-            #     "label": "SPDL2_K0.25_D30",
-            #     "model": "PPOLag_DELTA=30.0_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.25",
-            #     "color": "blue",
-            # },
-            # "SPDL2_K0.5_D20": {
-            #     "algorithm": "self_paced",
-            #     "label": "SPDL2_K0.5_D20",
-            #     "model": "PPOLag_DELTA=20.0_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.5",
-            #     "color": "green",
-            # },
-            # "SPDL2_K0.5_D25": {
-            #     "algorithm": "self_paced",
-            #     "label": "SPDL2_K0.5_D25",
-            #     "model": "PPOLag_DELTA=25.0_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.5",
+            # "DEF": {
+            #     "algorithm": "default",
+            #     "label": "Default",
+            #     "model": "PPO",
             #     "color": "magenta",
-            # },
-            # "SPDL2_K0.5_D30": {
-            #     "algorithm": "self_paced",
-            #     "label": "SPDL2_K0.5_D30",
-            #     "model": "PPOLag_DELTA=30.0_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.5",
-            #     "color": "tan",
             # },
         },
         "safety_cartpole_2d_narrow": {
@@ -402,8 +312,9 @@ def main():
 
     settings = {
         "safety_door_2d_narrow":{
+            "cost_threshold": 0.0,
             "plot_success": True,
-            "num_iters": 150,
+            "num_iters": 500,
             "steps_per_iter": 4000,
             "fontsize": 16,
             "figsize": (10, 10),
@@ -418,6 +329,10 @@ def main():
                     "ylim": [-5.0, 20.],
                 },
                 2: {
+                    "ylabel": 'Ave. acc. ex. cost',
+                    "ylim": [-5.0, 1000.],
+                },
+                3: {
                     "ylabel": 'Ave. succ. rate',
                     "ylim": [-0.1, 1.1],
                 },

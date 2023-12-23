@@ -7,7 +7,7 @@ from deep_sprl.experiments.abstract_experiment import AbstractExperiment, Learne
 from deep_sprl.teachers.alp_gmm import ALPGMM, ALPGMMWrapper
 from deep_sprl.teachers.goal_gan import GoalGAN, GoalGANWrapper
 from deep_sprl.teachers.spl import ConstrainedSelfPacedTeacherV2, SelfPacedTeacherV2, \
-    ConstrainedSelfPacedWrapper, SelfPacedWrapper, CurrOT
+    ConstrainedSelfPacedWrapper, SelfPacedWrapper, CurrOT, ConstrainedCurrOT
 from deep_sprl.teachers.dummy_teachers import UniformSampler, DistributionSampler
 from deep_sprl.teachers.dummy_wrapper import DummyWrapper
 from deep_sprl.teachers.abstract_teacher import BaseWrapper
@@ -60,8 +60,11 @@ class SafetyDoor2DExperiment(AbstractExperiment):
     DELTA_C_EXT = 7.5
     METRIC_EPS = 0.5
     EP_PER_UPDATE = 20 # 10
+    ATP = 0.75 # annealing target probability for CCURROT
+    CAS = 10 # number of cost annealing steps for CCURROT
+    RAS = 10 # number of reward annealing steps for CCURROT
     
-    NUM_ITER = 250 # 150 # 300
+    NUM_ITER = 375 # 500 # 250
     STEPS_PER_ITER = 4000 # 2000
     DISCOUNT_FACTOR = 0.99
     LAM = 0.95 # 0.99 
@@ -115,11 +118,11 @@ class SafetyDoor2DExperiment(AbstractExperiment):
                               p_old=self.GG_P_OLD[self.learner], pretrain_samples=samples)
             teacher_id = "GoalGAN"
         elif self.curriculum.self_paced() or self.curriculum.wasserstein():
-            teacher = self.create_self_paced_teacher(with_callback=False)
+            teacher = self.create_self_paced_teacher()
             teacher_id = "SelfPaced"
             special_kwargs['episodes_per_update'] = self.EP_PER_UPDATE
-        elif self.curriculum.constrained_self_paced():
-            teacher = self.create_self_paced_teacher(with_callback=True)
+        elif self.curriculum.constrained_self_paced() or self.curriculum.constrained_wasserstein():
+            teacher = self.create_self_paced_teacher()
             teacher_id = "ConstrainedSelfPaced"
             special_kwargs['episodes_per_update'] = self.EP_PER_UPDATE
         elif self.curriculum.acl():
@@ -333,7 +336,7 @@ class SafetyDoor2DExperiment(AbstractExperiment):
             model.agent._env._env.teacher.initialize_teacher(obs_shape, action_dim, interface, state_provider)
         return model, omnisafe_log_dir 
 
-    def create_self_paced_teacher(self, with_callback=False):
+    def create_self_paced_teacher(self):
         bounds = (self.LOWER_CONTEXT_BOUNDS.copy(), self.UPPER_CONTEXT_BOUNDS.copy())
         if self.curriculum.self_paced():
             return SelfPacedTeacherV2(self.target_log_likelihood, self.target_sampler, self.INITIAL_MEAN.copy(),
@@ -346,11 +349,17 @@ class SafetyDoor2DExperiment(AbstractExperiment):
                                                     cost_ub=self.DELTA_C+self.DELTA_C_EXT, max_kl=self.KL_EPS, 
                                                     std_lower_bound=self.STD_LOWER_BOUND.copy(),
                                                     kl_threshold=self.KL_THRESHOLD, dist_type=self.DIST_TYPE)
-        else:
-            # raise NotImplementedError("Invalid self-paced teacher type: ", str(self.curriculum()))
+        elif self.curriculum.wasserstein():
             init_samples = np.random.uniform(self.LOWER_CONTEXT_BOUNDS, self.UPPER_CONTEXT_BOUNDS, size=(200, 2))
             return CurrOT(bounds, init_samples, self.target_sampler, self.DELTA, self.METRIC_EPS, self.EP_PER_UPDATE,
                           wb_max_reuse=1)
+        elif self.curriculum.constrained_wasserstein():
+            init_samples = np.random.uniform(self.LOWER_CONTEXT_BOUNDS, self.UPPER_CONTEXT_BOUNDS, size=(200, 2))
+            return ConstrainedCurrOT(bounds, init_samples, self.target_sampler, self.DELTA, self.DELTA_C+self.DELTA_C_EXT,
+                                     self.METRIC_EPS, self.EP_PER_UPDATE, wb_max_reuse=1, annealing_target_probability=self.ATP, 
+                                     cost_annealing_steps=self.CAS, reward_annealing_steps=self.RAS)
+        else:
+            raise RuntimeError("Teacher type '{}' is not self-paced!".format(self.curriculum))
 
     def get_env_name(self):
         return f"safety_door_2d_{self.TARGET_TYPE}"

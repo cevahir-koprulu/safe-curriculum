@@ -46,7 +46,7 @@ class SafetyDoor2DExperiment(AbstractExperiment):
         return rng.multivariate_normal(self.TARGET_MEAN, self.TARGET_VARIANCES[self.TARGET_TYPE], size=n)
 
     INIT_VAR = 0.5 # 1.0
-    INITIAL_MEAN = np.array([0., 4.])
+    INITIAL_MEAN = np.array([0., ContextualSafetyDoor2D.ROOM_WIDTH/2])
     # INITIAL_MEAN = np.array([0., 4.25])
     # INITIAL_VARIANCE = np.diag(np.square([0.1, 0.1]))
 
@@ -56,15 +56,15 @@ class SafetyDoor2DExperiment(AbstractExperiment):
     KL_THRESHOLD = 8000.
     KL_EPS = 0.5
     DELTA = 20.0
-    DELTA_C = 0.0
-    DELTA_C_EXT = 7.5
+    DELTA_CS = 0.0
+    DELTA_CT = 7.5
     METRIC_EPS = 0.5
     EP_PER_UPDATE = 20 # 10
     ATP = 0.75 # annealing target probability for CCURROT
     CAS = 10 # number of cost annealing steps for CCURROT
     RAS = 10 # number of reward annealing steps for CCURROT
     
-    NUM_ITER = 375 # 500 # 250
+    NUM_ITER = 500 # 375 # 250
     STEPS_PER_ITER = 4000 # 2000
     DISCOUNT_FACTOR = 0.99
     LAM = 0.95 # 0.99 
@@ -270,7 +270,7 @@ class SafetyDoor2DExperiment(AbstractExperiment):
                 },
                 'lagrange_cfgs': {
                     # Tolerance of constraint violation
-                    'cost_limit': self.DELTA_C,
+                    'cost_limit': self.DELTA_CS,
                     # Initial value of lagrangian multiplier
                     'lagrangian_multiplier_init': 0.001,
                     # Learning rate of lagrangian multiplier
@@ -346,7 +346,7 @@ class SafetyDoor2DExperiment(AbstractExperiment):
         elif self.curriculum.constrained_self_paced():
             return ConstrainedSelfPacedTeacherV2(self.target_log_likelihood, self.target_sampler, self.INITIAL_MEAN.copy(),
                                                     np.diag(np.square([self.INIT_VAR, self.INIT_VAR])), bounds, self.DELTA,
-                                                    cost_ub=self.DELTA_C+self.DELTA_C_EXT, max_kl=self.KL_EPS, 
+                                                    cost_ub=self.DELTA_CT, max_kl=self.KL_EPS, 
                                                     std_lower_bound=self.STD_LOWER_BOUND.copy(),
                                                     kl_threshold=self.KL_THRESHOLD, dist_type=self.DIST_TYPE)
         elif self.curriculum.wasserstein():
@@ -355,7 +355,7 @@ class SafetyDoor2DExperiment(AbstractExperiment):
                           wb_max_reuse=1)
         elif self.curriculum.constrained_wasserstein():
             init_samples = np.random.uniform(self.LOWER_CONTEXT_BOUNDS, self.UPPER_CONTEXT_BOUNDS, size=(200, 2))
-            return ConstrainedCurrOT(bounds, init_samples, self.target_sampler, self.DELTA, self.DELTA_C+self.DELTA_C_EXT,
+            return ConstrainedCurrOT(bounds, init_samples, self.target_sampler, self.DELTA, self.DELTA_CT,
                                      self.METRIC_EPS, self.EP_PER_UPDATE, wb_max_reuse=1, annealing_target_probability=self.ATP, 
                                      cost_annealing_steps=self.CAS, reward_annealing_steps=self.RAS)
         else:

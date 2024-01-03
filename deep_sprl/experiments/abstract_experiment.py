@@ -228,9 +228,9 @@ class AbstractExperiment(ABC):
                      CurriculumType.ACL: ["ACL_EPS", "ACL_ETA"],
                      CurriculumType.PLR: ["PLR_REPLAY_RATE", "PLR_BETA", "PLR_RHO"],
                      CurriculumType.VDS: ["VDS_NQ", "VDS_LR", "VDS_EPOCHS", "VDS_BATCHES"],
-                     CurriculumType.ConstrainedSelfPaced: ["DELTA_C", "DELTA_C_EXT", "DELTA", 
+                     CurriculumType.ConstrainedSelfPaced: ["DELTA_CS", "DELTA_CT", "DELTA", 
                                                           "KL_EPS", "DIST_TYPE", "INIT_VAR"],
-                    CurriculumType.ConstrainedWasserstein: ["DELTA_C", "DELTA_C_EXT", "DELTA", "METRIC_EPS",
+                    CurriculumType.ConstrainedWasserstein: ["DELTA_CS", "DELTA_CT", "DELTA", "METRIC_EPS",
                                                             "ATP", "CAS", "RAS"],
                                                           }
 
@@ -283,8 +283,9 @@ class AbstractExperiment(ABC):
                              "ACL_ETA": float, "PLR_REPLAY_RATE": float, "PLR_BETA": float, "PLR_RHO": float,
                              "VDS_NQ": int, "VDS_LR": float, "VDS_EPOCHS": int, "VDS_BATCHES": int,
                              "DIST_TYPE": str, "TARGET_TYPE": str, "KL_EPS": float, 
-                             "EP_PER_UPDATE": int, "INIT_VAR":float, "DELTA_C": float, "DELTA_C_EXT": float,
-                             "METRIC_EPS": float,
+                             "EP_PER_UPDATE": int, "INIT_VAR":float, 
+                             "DELTA_CS": float, "DELTA_CT": float,
+                             "METRIC_EPS": float, "ATP": float, "CAS": int, "RAS": int,
         }
         for key in sorted(self.parameters.keys()):
             if key not in allowed_overrides:

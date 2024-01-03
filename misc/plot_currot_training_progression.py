@@ -91,10 +91,12 @@ def plot_results(base_log_dir, num_updates_per_iteration, seeds, env, setting, a
             constrained=True if "constrained" in algorithm else False,
         )
         if len(all_info) == 0: continue
-        for seed in all_info:
+        for seed_i in range(len(seeds)):
+            if seeds[seed_i] not in all_info: continue
+            seed = seeds[seed_i]
             for infokey in all_info[seed]:
                 ax_i = infokey_to_axis[infokey]
-                axes[ax_i,int(seed)-1].plot(iterations_step[:len(all_info[seed][infokey])],
+                axes[ax_i,seed_i].plot(iterations_step[:len(all_info[seed][infokey])],
                     all_info[seed][infokey], color=color, marker=infokey_to_marker[infokey], alpha=0.5, markersize=3.0)
 
     for i, infokey in enumerate(infokey_to_axis):
@@ -145,46 +147,36 @@ def plot_results(base_log_dir, num_updates_per_iteration, seeds, env, setting, a
 def main():
     base_log_dir = os.path.join(Path(os.getcwd()).parent, "logs")
     num_updates_per_iteration = 5
-    seeds = [str(i) for i in range(1, 6)]
+    seeds = [str(i) for i in range(1, 16)]
     env = "safety_door_2d_narrow"
-    figname_extra = "_ATP=0.75_C-R-AS=10_MEPS=0.5_rExp0.8_lBorder=0.01_slp=0.5_walled_training_progression_ANNEALED"
+    figname_extra = "_rExp0.8_lBorder=0.01_slp=0.5_walled_training_progression_ANNEALED"
 
     algorithms = {
         "safety_door_2d_narrow": {
-            "CCURROTL_D=25_DCE=2.5": {
+            "CCURROTL_D=25_DCE=1.25_ATP=0.75_MEPS=0.25": {
                 "algorithm": "constrained_wasserstein",
-                "label": "CCURROTL_D=25_DCE=2.5",
-                "model": "PPOLag_ATP=0.75_CAS=10_DELTA=25.0_DELTA_C=0.0_DELTA_C_EXT=2.5_METRIC_EPS=0.5_RAS=10",
+                "label": "CCURROTL_D=25_DCE=1.25_ATP=0.75_MEPS=0.25",
+                "model": "PPOLag_ATP=0.75_CAS=10_DELTA=25.0_DELTA_C=0.0_DELTA_C_EXT=1.25_METRIC_EPS=0.25_RAS=10",
                 "color": "blue",
+                "cmap": "Blues",
             },
-            "CCURROTL_D=30_DCE=2.5": {
+            "CURROTL_D=25_MEPS=0.5": {
                 "algorithm": "constrained_wasserstein",
-                "label": "CCURROTL_D=30_DCE=2.5",
-                "model": "PPOLag_ATP=0.75_CAS=10_DELTA=30.0_DELTA_C=0.0_DELTA_C_EXT=2.5_METRIC_EPS=0.5_RAS=10",
-                "color": "green",
-            },
-            "CCURROTL_D=25_DCE=7.5": {
-                "algorithm": "constrained_wasserstein",
-                "label": "CCURROTL_D=25_DCE=7.5",
-                "model": "PPOLag_ATP=0.75_CAS=10_DELTA=25.0_DELTA_C=0.0_DELTA_C_EXT=7.5_METRIC_EPS=0.5_RAS=10",
+                "label": "CURROTL_D=25_MEPS=0.5",
+                "model": "PPOLag_DELTA=25.0_METRIC_EPS=0.25",
                 "color": "red",
-            },
-            "CCURROTL_D=30_DCE=7.5": {
-                "algorithm": "constrained_wasserstein",
-                "label": "CCURROTL_D=30_DCE=7.5",
-                "model": "PPOLag_ATP=0.75_CAS=10_DELTA=30.0_DELTA_C=0.0_DELTA_C_EXT=7.5_METRIC_EPS=0.5_RAS=10",
-                "color": "cyan",
-            },
+                "cmap": "Reds",
+            },           
         },
     }
 
     settings = {
         "safety_door_2d_narrow": {
             "context_dim": 2,
-            "num_iters": 375,
+            "num_iters": 500,
             "steps_per_iter": 4000,
             "fontsize": 16,
-            "figsize": (20, 10),
+            "figsize": (30, 10),
             "bbox_to_anchor": (.5, 1.05),
             "subplot_settings": {
                 0: {

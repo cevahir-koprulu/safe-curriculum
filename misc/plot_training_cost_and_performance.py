@@ -183,27 +183,13 @@ def plot_results(base_log_dir, num_updates_per_iteration, seeds, env, setting, a
 def main():
     base_log_dir = os.path.join(Path(os.getcwd()).parent, "logs")
     num_updates_per_iteration = 5
-    seeds = [str(i) for i in range(1, 16)]
+    seeds = [str(i) for i in range(1, 8)]
     env = "safety_door_2d_narrow"
-    figname_extra = "_rExp0.8_lBorder=0.01_slp=0.5_walled_training_ANNEALED_excess"
+    figname_extra = "_rExp0.8_lBorder=0.01_slp=0.5_walled_training_ANNEALED_excess_s1-7"
 
 
     algorithms = {
         "safety_door_2d_narrow": {
-            "CCURROTL_D=25_DCE=1.25_ATP=0.75_MEPS=0.25": {
-                "algorithm": "constrained_wasserstein",
-                "label": "CCURROTL_D=25_DCE=1.25_ATP=0.75_MEPS=0.25",
-                "model": "PPOLag_ATP=0.75_CAS=10_DELTA=25.0_DELTA_C=0.0_DELTA_C_EXT=1.25_METRIC_EPS=0.25_RAS=10",
-                "color": "blue",
-                "cmap": "Blues",
-            },
-            "CSPDL2_D=20_DCE=7.5_KL=0.5": {
-                "algorithm": "constrained_self_paced",
-                "label": "CSPDL_D=20_DCE=7.5_KL=0.5",
-                "model": "PPOLag_DELTA=20.0_DELTA_C=0.0_DELTA_C_EXT=7.5_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.5",
-                "color": "green",
-                "cmap": "Greens",
-            },
             "CURROTL_D=25_MEPS=0.5": {
                 "algorithm": "wasserstein",
                 "label": "CURROTL_D=25_MEPS=0.5",
@@ -211,13 +197,41 @@ def main():
                 "color": "red",
                 "cmap": "Reds",
             },
-            "SPDL2_D=20_KL=0.5": {
-                "algorithm": "self_paced",
-                "label": "SPDL2_D=20_KL=0.5",
-                "model": "PPOLag_DELTA=20.0_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.5",
-                "color": "purple",
-                "cmap": "Purples",
-            }, 
+            "CURROTL_D=25_MEPS=0.25": {
+                "algorithm": "wasserstein",
+                "label": "CURROTL_D=25_MEPS=0.25",
+                "model": "PPOLag_DELTA=25.0_METRIC_EPS=0.25",
+                "color": "blue",
+                "cmap": "Blues",
+            },
+            # "CCURROTL_D=25_DCE=1.25_ATP=0.75_MEPS=0.25": {
+            #     "algorithm": "constrained_wasserstein",
+            #     "label": "CCURROTL_D=25_DCE=1.25_ATP=0.75_MEPS=0.25",
+            #     "model": "PPOLag_ATP=0.75_CAS=10_DELTA=25.0_DELTA_C=0.0_DELTA_C_EXT=1.25_METRIC_EPS=0.25_RAS=10",
+            #     "color": "blue",
+            #     "cmap": "Blues",
+            # },
+            # "CSPDL2_D=20_DCE=7.5_KL=0.5": {
+            #     "algorithm": "constrained_self_paced",
+            #     "label": "CSPDL_D=20_DCE=7.5_KL=0.5",
+            #     "model": "PPOLag_DELTA=20.0_DELTA_C=0.0_DELTA_C_EXT=7.5_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.5",
+            #     "color": "green",
+            #     "cmap": "Greens",
+            # },
+            # "CURROTL_D=25_MEPS=0.5": {
+            #     "algorithm": "wasserstein",
+            #     "label": "CURROTL_D=25_MEPS=0.5",
+            #     "model": "PPOLag_DELTA=25.0_METRIC_EPS=0.5",
+            #     "color": "red",
+            #     "cmap": "Reds",
+            # },
+            # "SPDL2_D=20_KL=0.5": {
+            #     "algorithm": "self_paced",
+            #     "label": "SPDL2_D=20_KL=0.5",
+            #     "model": "PPOLag_DELTA=20.0_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.5",
+            #     "color": "purple",
+            #     "cmap": "Purples",
+            # }, 
         },
     }
 

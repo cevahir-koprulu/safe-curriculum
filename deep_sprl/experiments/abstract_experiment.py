@@ -28,6 +28,7 @@ class CurriculumType(Enum):
     VDS = 9
     ConstrainedSelfPaced = 10
     ConstrainedWasserstein = 11
+    Wasserstein4Cost = 12
 
     def __str__(self):
         if self.goal_gan():
@@ -50,6 +51,8 @@ class CurriculumType(Enum):
             return "constrained_self_paced"
         elif self.constrained_wasserstein():
             return "constrained_wasserstein"
+        elif self.wasserstein4cost():
+            return "wasserstein4cost"
         else:
             return "random"
 
@@ -86,6 +89,9 @@ class CurriculumType(Enum):
     def constrained_wasserstein(self):
         return self.value == CurriculumType.ConstrainedWasserstein.value
 
+    def wasserstein4cost(self):
+        return self.value == CurriculumType.Wasserstein4Cost.value
+
     @staticmethod
     def from_string(string):
         if string == str(CurriculumType.GoalGAN):
@@ -110,6 +116,8 @@ class CurriculumType(Enum):
             return CurriculumType.ConstrainedSelfPaced
         elif string == str(CurriculumType.ConstrainedWasserstein):
             return CurriculumType.ConstrainedWasserstein
+        elif string == str(CurriculumType.Wasserstein4Cost):
+            return CurriculumType.Wasserstein4Cost
         else:
             raise RuntimeError("Invalid string: '" + string + "'")
 
@@ -166,6 +174,9 @@ class Learner(Enum):
     def ppolag(self):
         return self.value == Learner.PPOLag.value
     
+    def is_constrained(self):
+        return self.ppolag()
+    
     def create_learner(self, env_id, custom_cfgs, wrapper_kwargs=None):
         model = omnisafe.Agent(str(self), env_id, custom_cfgs=custom_cfgs)
         if wrapper_kwargs is not None:
@@ -218,7 +229,8 @@ class Learner(Enum):
             raise RuntimeError("Invalid string: '" + string + "'")
 
 class AbstractExperiment(ABC):
-    APPENDIX_KEYS = {"default": ["DISCOUNT_FACTOR", "STEPS_PER_ITER", "LAM"],
+    APPENDIX_KEYS = {
+                    "default": ["DISCOUNT_FACTOR", "STEPS_PER_ITER", "LAM"],
                      CurriculumType.SelfPaced: ["DELTA", "KL_EPS", "DIST_TYPE", "INIT_VAR"],
                      CurriculumType.Wasserstein: ["DELTA", "METRIC_EPS"],
                      CurriculumType.GoalGAN: ["GG_NOISE_LEVEL", "GG_FIT_RATE", "GG_P_OLD"],
@@ -228,10 +240,11 @@ class AbstractExperiment(ABC):
                      CurriculumType.ACL: ["ACL_EPS", "ACL_ETA"],
                      CurriculumType.PLR: ["PLR_REPLAY_RATE", "PLR_BETA", "PLR_RHO"],
                      CurriculumType.VDS: ["VDS_NQ", "VDS_LR", "VDS_EPOCHS", "VDS_BATCHES"],
-                     CurriculumType.ConstrainedSelfPaced: ["DELTA_CS", "DELTA_CT", "DELTA", 
+                     CurriculumType.ConstrainedSelfPaced: ["DELTA_CT", "DELTA", 
                                                           "KL_EPS", "DIST_TYPE", "INIT_VAR"],
-                    CurriculumType.ConstrainedWasserstein: ["DELTA_CS", "DELTA_CT", "DELTA", "METRIC_EPS",
+                    CurriculumType.ConstrainedWasserstein: ["DELTA_CT", "DELTA", "METRIC_EPS",
                                                             "ATP", "CAS", "RAS"],
+                    CurriculumType.Wasserstein4Cost: ["DELTA_CT", "METRIC_EPS",],
                                                           }
 
     def __init__(self, base_log_dir, curriculum_name, learner_name, parameters, seed, device, view=False):
@@ -301,6 +314,8 @@ class AbstractExperiment(ABC):
     def get_log_dir(self):
         override_appendix = create_override_appendix(self.APPENDIX_KEYS["default"], self.parameters)
         leaner_string = str(self.learner)
+        if self.learner.is_constrained():
+            leaner_string += "_DELTA_CS=" + str(self.DELTA_CS).replace(" ", "")
         key_list = self.APPENDIX_KEYS[self.curriculum]
         for key in sorted(key_list):
             tmp = getattr(self, key)
@@ -389,7 +404,8 @@ class AbstractExperiment(ABC):
         sorted_models = np.array(omnisafe_saved_models)[idxs].tolist()
         
         if self.curriculum.self_paced() or self.curriculum.constrained_self_paced() or \
-            self.curriculum.wasserstein() or self.curriculum.constrained_wasserstein():
+            self.curriculum.wasserstein() or self.curriculum.constrained_wasserstein() or \
+                self.curriculum.wasserstein4cost():
             for iteration_dir, saved_model in zip(sorted_iteration_dirs, sorted_models):
                 print(f"Evaluating wrt context distribution in {iteration_dir}")
                 iteration_log_dir = os.path.join(log_dir, iteration_dir)

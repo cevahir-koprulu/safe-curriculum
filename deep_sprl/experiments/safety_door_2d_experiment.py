@@ -7,7 +7,7 @@ from deep_sprl.experiments.abstract_experiment import AbstractExperiment, Learne
 from deep_sprl.teachers.alp_gmm import ALPGMM, ALPGMMWrapper
 from deep_sprl.teachers.goal_gan import GoalGAN, GoalGANWrapper
 from deep_sprl.teachers.spl import ConstrainedSelfPacedTeacherV2, SelfPacedTeacherV2, \
-    ConstrainedSelfPacedWrapper, SelfPacedWrapper, CurrOT, ConstrainedCurrOT
+    ConstrainedSelfPacedWrapper, SelfPacedWrapper, SelfPaced4CostWrapper, CurrOT, ConstrainedCurrOT, CurrOT4Cost
 from deep_sprl.teachers.dummy_teachers import UniformSampler, DistributionSampler
 from deep_sprl.teachers.dummy_wrapper import DummyWrapper
 from deep_sprl.teachers.abstract_teacher import BaseWrapper
@@ -55,10 +55,10 @@ class SafetyDoor2DExperiment(AbstractExperiment):
     STD_LOWER_BOUND = np.array([0.1, 0.1])
     KL_THRESHOLD = 8000.
     KL_EPS = 0.5
-    DELTA = 20.0
-    DELTA_CS = 0.0
-    DELTA_CT = 7.5
-    METRIC_EPS = 0.5
+    DELTA = 25.0
+    DELTA_CS = 5.0 # 0.0
+    DELTA_CT = 1.25 # 7.5
+    METRIC_EPS = 0.25
     EP_PER_UPDATE = 20 # 10
     ATP = 0.75 # annealing target probability for CCURROT
     CAS = 10 # number of cost annealing steps for CCURROT
@@ -124,6 +124,10 @@ class SafetyDoor2DExperiment(AbstractExperiment):
         elif self.curriculum.constrained_self_paced() or self.curriculum.constrained_wasserstein():
             teacher = self.create_self_paced_teacher()
             teacher_id = "ConstrainedSelfPaced"
+            special_kwargs['episodes_per_update'] = self.EP_PER_UPDATE
+        elif self.curriculum.wasserstein4cost():
+            teacher = self.create_self_paced_teacher()
+            teacher_id = "SelfPaced4Cost"
             special_kwargs['episodes_per_update'] = self.EP_PER_UPDATE
         elif self.curriculum.acl():
             bins = 50
@@ -358,6 +362,10 @@ class SafetyDoor2DExperiment(AbstractExperiment):
             return ConstrainedCurrOT(bounds, init_samples, self.target_sampler, self.DELTA, self.DELTA_CT,
                                      self.METRIC_EPS, self.EP_PER_UPDATE, wb_max_reuse=1, annealing_target_probability=self.ATP, 
                                      cost_annealing_steps=self.CAS, reward_annealing_steps=self.RAS)
+        elif self.curriculum.wasserstein4cost():
+            init_samples = np.random.uniform(self.LOWER_CONTEXT_BOUNDS, self.UPPER_CONTEXT_BOUNDS, size=(200, 2))
+            return CurrOT4Cost(bounds, init_samples, self.target_sampler, self.DELTA_CT, self.METRIC_EPS, self.EP_PER_UPDATE,
+                               wb_max_reuse=1)
         else:
             raise RuntimeError("Teacher type '{}' is not self-paced!".format(self.curriculum))
 

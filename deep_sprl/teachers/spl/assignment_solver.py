@@ -53,7 +53,7 @@ class AssignmentSolver:
 if __name__ == "__main__":
     np.random.seed(0)
     n = 200
-    n_new = 50
+    n_new = 20
     data1 = np.random.uniform(-1, 1, size=(n + n_new, 2))
     data2 = np.random.uniform(-1, 1, size=(n, 2))
 

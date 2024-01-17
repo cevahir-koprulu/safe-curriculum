@@ -30,10 +30,14 @@ def rollout_policy(policy, env):
         obs, reward, cost, terminated, truncated, info = env.step(action)
         # print(f"obs: {obs}, action: {action}, reward: {reward}, cost: {cost}, terminated: {terminated}, truncated: {truncated}")
         observations.append(obs.detach().numpy())
+        # if np.linalg.norm(observations[-1][:2]-observations[-1][2:4]) <= 1*np.sqrt(2):
+        #     print(f"time: {len(observations)-1} || obs: {observations[-1][:2]} || context: {observations[-1][2:]} || dist: {np.linalg.norm(observations[-1][:2]-observations[-1][2:4])}")
         actions.append(action.detach().numpy())
         rewards.append(reward.detach().numpy())
         costs.append(cost.detach().numpy())
         success.append(info["success"].detach().numpy()*1)
+    print("NUMBER OF STEPS: ", len(observations))
+    print(actions)
     return np.array(observations), np.array(actions), np.array(rewards), np.array(costs), np.array(success)
 
 def load_policy(model_path, exp, device='cpu'):
@@ -88,31 +92,42 @@ def plot_trajectories(base_log_dir, policy_from_iteration, seeds, exp, env_name,
     figsize = setting["figsize"]
     bbox_to_anchor = setting["bbox_to_anchor"]
 
-
-
     fig, axes = plt.subplots(1, len(seeds), figsize=figsize, constrained_layout=True)
-    plt.suptitle(f"Context: ({context[0]},{context[1]}) || Iteration: {policy_from_iteration}")
-
+    # context str in for loop
+    context_str = "c=(" 
+    for cdim in range(context.shape[0]):
+        context_str += f"{context[cdim]:.2f}"
+        if cdim < context.shape[0]-1:
+            context_str += ","
+    context_str += ")"
+    plt.suptitle(f"{context_str} || Iteration: {policy_from_iteration}")
+    offset = 9.0
     if len(seeds) == 1:
         axes = [axes]
     else:
         axes = axes.flatten()
     for ax_i, ax in enumerate(axes):
-        ax.set_xlim([0., 8.])
-        ax.set_ylim([0., 8.])
-        ax.set_yticks([0.0, 8.0])
+        ax.set_xlim([0., 18.])
+        ax.set_ylim([0., 18.])
+        ax.set_xticks([0.0, 2.0, 4.0, 14.0, 16.0, 18.0])
+        ax.set_yticks([0.0, 2.0, 4.0, 14.0, 16.0, 18.0])
         ax.set_aspect('equal')
         ax.set_title(f"Seed {seeds[ax_i]}",fontsize=fontsize)
-        ax.set_xticks([0.0, 4.0, context[0]+4.0, 8.0])
-        ax.vlines(context[0]-context[1]/2+4.0, 0.0, 8.0, color="black", linewidth=2.0)
-        ax.vlines(context[0]+context[1]/2+4.0, 0.0, 8.0, color="black", linewidth=2.0)
-        ax.hlines(3.0, 0.0, 8.0, color="black", linewidth=2.0)
-        lava_1 = Rectangle((0.0, 3.0), context[0]-context[1]/2+4.0, 2.0, facecolor="red", alpha=0.5)
-        lava_2 = Rectangle((context[0]+context[1]/2+4.0, 3.0), 4.0-context[0]-context[1]/2, 2.0, facecolor="red", alpha=0.5)
-        ax.add_patch(lava_1)
-        ax.add_patch(lava_2)
-        ax.scatter(4.0, 7.0, marker="o", color="black", s=500)
-        ax.scatter(4.0, 1.0, marker="X", color="green", s=500)
+        init = Rectangle((2.0, 2.0), 2.0, 2.0, facecolor="green", alpha=0.5)
+        lava = Rectangle((2.0, 4.0), 2.0, 10.0, facecolor="red", alpha=0.5)
+        wall1 = Rectangle((0.0, 0.0), 2.0, 18.0, facecolor="black")
+        wall2 = Rectangle((0.0, 0.0), 18.0, 2.0, facecolor="black")
+        wall3 = Rectangle((16.0, 0.0), 2.0, 18.0, facecolor="black")
+        wall4 = Rectangle((0.0, 16.0), 18.0, 2.0, facecolor="black")
+        wallcenter = Rectangle((4.0, 4.0), 10.0, 10.0, facecolor="black")
+        ax.add_patch(init)
+        ax.add_patch(lava)
+        ax.add_patch(wall1) 
+        ax.add_patch(wall2)
+        ax.add_patch(wall3)
+        ax.add_patch(wall4)
+        ax.add_patch(wallcenter)
+        ax.scatter(context[0]+9.0, context[1]+9.0, marker="X", color="purple", s=100) # Goal
 
 
     for algo_i, algo in enumerate(algorithms):
@@ -136,13 +151,16 @@ def plot_trajectories(base_log_dir, policy_from_iteration, seeds, exp, env_name,
             obs, acts, rews, costs, succs = rollout_policy(policy, exp.eval_env)
             disc_return = np.sum(rews * np.power(discount_factor, np.arange(rews.shape[0])))
             disc_cost = np.sum(costs * np.power(discount_factor, np.arange(costs.shape[0])))
-            x, v_x, y, v_y = obs[:, 0], obs[:, 1], obs[:, 2], obs[:, 3]
-            axes[seed_i].plot(x+4.0, y+4.0, color=color, alpha=0.5, linewidth=3.0)
-            axes[seed_i].quiver(x+4.0, y+4.0, v_x/(10*np.sqrt(v_x**2+v_y**2)+0.01), v_y/(10*np.sqrt(v_x**2+v_y**2)+0.01),
+            x, y = obs[:, 0]+offset, obs[:, 1]+offset
+            vx, vy = obs[1:,0]-obs[:-1,0], obs[1:,1]-obs[:-1,1]
+            v_x = np.concatenate((vx, np.array([0])))
+            v_y = np.concatenate((vy, np.array([0])))
+            axes[seed_i].plot(x, y, color=color, alpha=0.5, linewidth=3.0)
+            axes[seed_i].quiver(x, y, v_x/(10*np.sqrt(v_x**2+v_y**2)+0.01), v_y/(10*np.sqrt(v_x**2+v_y**2)+0.01),
                                  color=color, alpha=0.5, width=0.01)
             axes[seed_i].text(0.1, 0.1+0.5*algo_i,
-                            #   f"Return: {disc_return:.2f} || Cost: {disc_cost:.2f} || Succ: {np.any(succs)}",
                               f"{disc_return:.2f} || {disc_cost:.2f} || {np.any(succs)}",
+                                fontsize=8,
                               color=color)
 
     colors = []
@@ -167,13 +185,13 @@ def plot_trajectories(base_log_dir, policy_from_iteration, seeds, exp, env_name,
             figname += "_vs_"
 
     dir_path = os.path.join(Path(os.getcwd()).parent, "figures", f"trajvis_{experiment_name}", f"{figname}{figname_extra}",
-                            f"c=({context[0]:.2f},{context[1]:.2f})")
+                            f"{context_str}")
 
     if not os.path.exists(dir_path):
         os.makedirs(dir_path)
 
     figpath = os.path.join(dir_path, 
-                        f"{experiment_name}_{figname}{figname_extra}_c=({context[0]:.2f},{context[1]:.2f})"+\
+                        f"{experiment_name}_{figname}{figname_extra}_{context_str}"+\
                         f"_iter={policy_from_iteration}.pdf")
     print(figpath)
     plt.savefig(figpath, dpi=500, bbox_inches='tight', 
@@ -182,41 +200,45 @@ def plot_trajectories(base_log_dir, policy_from_iteration, seeds, exp, env_name,
 
 def main():
     base_log_dir = Path(os.getcwd()).parent
-    policy_from_iteration = 495
+    policy_from_iteration = 80
     seeds = [str(i) for i in range(1, 6)]
+    # seeds = [2,3,5]
     rl_algorithm = "PPOLag"
-    experiment_name = "safety_door_2d_narrow"
+    experiment_name = "safety_maze_3d"
     env_name = "ContextualSafetyDoor2D-v0"
-    figname_extra = "_D=25_DCS=0_s1-5"
+    figname_extra = "_D=0.6_DCT=0_DCS=0_s1-5_maxstep=0.5_spc=0.5_tanh_correctlogpv2"
     discount_factor = 0.99
     
-    eval_contexts = load_eval_contexts(experiment_name)
-    # context = eval_contexts)[0]
-    # context = np.array([2.5, 0.5])
+    # context = load_eval_contexts(experiment_name)[0]
+    # context = np.array([-3., 6., 1.*np.sqrt(2)])
+    # context = np.array([-3., 6., 0.05])
+    # context = np.array([-6., 6., 1.*np.sqrt(2)])
+    # context = np.array([-6., 6., 0.05])
+    context = np.array([6., -6., 1.*np.sqrt(2)])
 
-    if experiment_name[:experiment_name.rfind('_')] == "safety_door_2d":
-        from deep_sprl.experiments import SafetyDoor2DExperiment
-        exp = SafetyDoor2DExperiment(base_log_dir="logs", curriculum_name="default", 
+    if experiment_name == "safety_maze_3d":
+        from deep_sprl.experiments import SafetyMaze3DExperiment
+        exp = SafetyMaze3DExperiment(base_log_dir="logs", curriculum_name="default", 
                                     learner_name=rl_algorithm, 
-                                    parameters={"TARGET_TYPE": experiment_name[experiment_name.rfind('_')+1:]},
+                                    parameters={},
                                     seed=1, device="cpu")
     else:
         raise ValueError("Invalid environment")
 
 
     algorithms = {
-        "safety_door_2d_narrow": {
-            "CURROTL_MEPS=0.5": {
-                "algorithm": "wasserstein",
-                "label": "CURROTL_MEPS=0.5",
-                "model": "PPOLag_DELTA_CS=0.0_DELTA=25.0_METRIC_EPS=0.5",
+        "safety_maze_3d": {
+            "CCURROTL_MEPS=1.0": {
+                "algorithm": "constrained_wasserstein",
+                "label": "CCURROTL_MEPS=1.0",
+                "model": "PPOLag_DELTA_CS=0.0_ATP=0.75_CAS=10_DELTA=0.6_DELTA_CT=0.0_METRIC_EPS=1.0_RAS=10",
                 "color": "red",
                 "cmap": "Reds",
             },
-            "CCURROTL_DCT=1.5_MEPS=0.5": {
+            "CCURROTL_MEPS=1.25": {
                 "algorithm": "constrained_wasserstein",
-                "label": "CCURROTL_DCT=1.5_MEPS=0.5",
-                "model": "PPOLag_DELTA_CS=0.0_ATP=0.75_CAS=10_DELTA=25.0_DELTA_CT=1.5_METRIC_EPS=0.5_RAS=10",
+                "label": "CCURROTL_MEPS=1.25",
+                "model": "PPOLag_DELTA_CS=0.0_ATP=0.75_CAS=10_DELTA=0.6_DELTA_CT=0.0_METRIC_EPS=1.25_RAS=10",
                 "color": "blue",
                 "cmap": "Blues",
             },
@@ -224,28 +246,26 @@ def main():
     }
 
     settings = {
-        "safety_door_2d_narrow":{
+        "safety_maze_3d":{
             "fontsize": 10,
             "figsize": (13, 5),
             "bbox_to_anchor": (.1, 1.01),
         },
     }
 
-    for context_i in range(eval_contexts.shape[0]):
-        context = eval_contexts[context_i]
-        plot_trajectories(
-            base_log_dir=base_log_dir,
-            policy_from_iteration=policy_from_iteration,
-            seeds=seeds,
-            exp=exp,
-            env_name=env_name,
-            experiment_name=experiment_name,
-            discount_factor=discount_factor,
-            setting=settings[experiment_name],
-            algorithms=algorithms[experiment_name],
-            figname_extra=figname_extra,
-            context=context,
-            )
+    plot_trajectories(
+        base_log_dir=base_log_dir,
+        policy_from_iteration=policy_from_iteration,
+        seeds=seeds,
+        exp=exp,
+        env_name=env_name,
+        experiment_name=experiment_name,
+        discount_factor=discount_factor,
+        setting=settings[experiment_name],
+        algorithms=algorithms[experiment_name],
+        figname_extra=figname_extra,
+        context=context,
+        )
 
 if __name__ == "__main__":
     main()

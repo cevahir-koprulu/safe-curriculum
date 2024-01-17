@@ -12,84 +12,101 @@ from deep_sprl.teachers.dummy_teachers import UniformSampler, DistributionSample
 from deep_sprl.teachers.dummy_wrapper import DummyWrapper
 from deep_sprl.teachers.abstract_teacher import BaseWrapper
 from deep_sprl.teachers.acl import ACL, ACLWrapper
-from deep_sprl.teachers.plr import PLR, PLRWrapper
+from deep_sprl.teachers.plr import PLR, PLRWrapper, ValueFunction
 from deep_sprl.teachers.vds import VDS, VDSWrapper
 from deep_sprl.teachers.util import Subsampler
 from deep_sprl.util.utils import update_params
 from scipy.stats import multivariate_normal
 
-from deep_sprl.environments.safety_door import ContextualSafetyDoor2D
+from deep_sprl.environments.safety_maze import ContextualSafetyMaze3D
 
-class SafetyDoor2DExperiment(AbstractExperiment):
+class MazeSampler:
+    def __init__(self):
+        self.LOWER_CONTEXT_BOUNDS = np.array([-9., -9., 0.05])
+        self.UPPER_CONTEXT_BOUNDS = np.array([9., 9., 0.05])
+
+    def sample(self):
+        sample = np.random.uniform(self.LOWER_CONTEXT_BOUNDS, self.UPPER_CONTEXT_BOUNDS)
+        while not ContextualSafetyMaze3D._is_feasible(sample):
+            sample = np.random.uniform(self.LOWER_CONTEXT_BOUNDS, self.UPPER_CONTEXT_BOUNDS)
+        return sample
+
+    def save(self, path):
+        pass
+
+    def load(self, path):
+        pass
+
+class SafetyMaze3DExperiment(AbstractExperiment):
     PENALTY_COEFFICIENT = {Learner.SAC: 0.0, 
                            Learner.PPO: 1.0,
                            Learner.PPOLag: 0.0}
 
-    TARGET_TYPE = "narrow"
-    TARGET_MEAN = np.array([ContextualSafetyDoor2D.ROOM_WIDTH*0.3125, 0.5])
-    TARGET_VARIANCES = {
-        "narrow": np.square(np.diag([.1, .1])),
-        "wide": np.square(np.diag([1., 1.])),
-    }
+    INIT_VAR = 0.0 # Redundant
+    INITIAL_MEAN = np.array([0., 0., 10])
+    INITIAL_VARIANCE = np.diag(np.square([4, 4, 5]))
 
-    LOWER_CONTEXT_BOUNDS = np.array([-ContextualSafetyDoor2D.ROOM_WIDTH/2, 0.5])
-    UPPER_CONTEXT_BOUNDS = np.array([ContextualSafetyDoor2D.ROOM_WIDTH/2,
-                                     ContextualSafetyDoor2D.ROOM_WIDTH])
+    TARGET_LOWER_CONTEXT_BOUNDS = np.array([-7., 5., 0.05])
+    TARGET_UPPER_CONTEXT_BOUNDS = np.array([7., 7., 0.05])
+
+    LOWER_CONTEXT_BOUNDS = np.array([-9., -9., 0.05])
+    UPPER_CONTEXT_BOUNDS = np.array([9., 9., 18.])
 
     def target_log_likelihood(self, cs):
-        return multivariate_normal.logpdf(cs, self.TARGET_MEAN, self.TARGET_VARIANCES[self.TARGET_TYPE])
+        l0, l1, l2 = self.TARGET_LOWER_CONTEXT_BOUNDS
+        u0, u1, u2 = self.TARGET_UPPER_CONTEXT_BOUNDS
+        area_target = (u0 - l0) * (u1 - l1)
+        area_rest = np.prod(self.UPPER_CONTEXT_BOUNDS[:2] - self.LOWER_CONTEXT_BOUNDS[:2]) - area_target
+        norm = (area_target * 1 + area_rest * 1e-4) * (0.01 * 1 + 17.94 * 1e-4) 
+        in_support = (cs[:, -1] < 0.06) & (l0<=cs[:,0]) & (cs[:,0]<=u0) & (l1<=cs[:,1]) & (cs[:,1]<=u1)
+        return np.where(in_support, np.log(1 / norm) * np.ones(cs.shape[0]), np.log(1e-4 / norm) * np.ones(cs.shape[0]))
 
     def target_sampler(self, n, rng=None):
         if rng is None:
             rng = np.random
-
-        return rng.multivariate_normal(self.TARGET_MEAN, self.TARGET_VARIANCES[self.TARGET_TYPE], size=n)
-
-    INIT_VAR = 0.5 # 1.0
-    INITIAL_MEAN = np.array([0., ContextualSafetyDoor2D.ROOM_WIDTH/2])
-    # INITIAL_MEAN = np.array([0., 4.25])
-    # INITIAL_VARIANCE = np.diag(np.square([0.1, 0.1]))
+        return rng.uniform(self.TARGET_LOWER_CONTEXT_BOUNDS, self.TARGET_UPPER_CONTEXT_BOUNDS, size=(n, 3))
 
     DIST_TYPE = "gaussian"  # "cauchy"
 
     STD_LOWER_BOUND = np.array([0.1, 0.1])
     KL_THRESHOLD = 8000.
-    KL_EPS = 0.5
-    DELTA = 25.0
-    DELTA_CS = 0.0 # 5.0 
-    DELTA_CT = 1.5 # 3.75
-    METRIC_EPS = 0.5
-    EP_PER_UPDATE = 20
-    ATP = 0.75 # annealing target probability for CCURROT
+    KL_EPS = 0.25
+    DELTA = 0.6
+    DELTA_CS = 0.0 
+    DELTA_CT = 1.0
+    METRIC_EPS = 1.25
+    INIT_CONTEXT_NUM = 200
+    EP_PER_UPDATE = 40 # 20
+    ATP = 1.0 # 0.75 # annealing target probability for CCURROT
     CAS = 10 # number of cost annealing steps for CCURROT
     RAS = 10 # number of reward annealing steps for CCURROT
     
-    NUM_ITER = 500 # 750
-    STEPS_PER_ITER = 4000 # 2000
-    DISCOUNT_FACTOR = 0.99
-    LAM = 0.95 # 0.99 
+    NUM_ITER = 500
+    STEPS_PER_ITER = 2000 # 4000
+    DISCOUNT_FACTOR = 0.99 # 0.995
+    LAM = 0.95 # 0.995
 
     # ACL Parameters [found after search over [0.05, 0.1, 0.2] x [0.01, 0.025, 0.05]]
     ACL_EPS = 0.2
-    ACL_ETA = 0.025
+    ACL_ETA = 0.05
 
-    PLR_REPLAY_RATE = 0.85
+    PLR_REPLAY_RATE = 0.55
     PLR_BUFFER_SIZE = 100
-    PLR_BETA = 0.45
-    PLR_RHO = 0.15
+    PLR_BETA = 0.15
+    PLR_RHO = 0.45
 
     VDS_NQ = 5
-    VDS_LR = 1e-3
-    VDS_EPOCHS = 3
-    VDS_BATCHES = 20
+    VDS_LR = 5e-4
+    VDS_EPOCHS = 10
+    VDS_BATCHES = 80
 
-    AG_P_RAND = {Learner.PPO: 0.1, Learner.SAC: None}
-    AG_FIT_RATE = {Learner.PPO: 100, Learner.SAC: None}
-    AG_MAX_SIZE = {Learner.PPO: 500, Learner.SAC: None}
+    AG_P_RAND = {Learner.PPO: None, Learner.SAC: 0.2}
+    AG_FIT_RATE = {Learner.PPO: None, Learner.SAC: 200}
+    AG_MAX_SIZE = {Learner.PPO: None, Learner.SAC: 500}
 
-    GG_NOISE_LEVEL = {Learner.PPO: 0.1, Learner.SAC: None}
-    GG_FIT_RATE = {Learner.PPO: 200, Learner.SAC: None}
-    GG_P_OLD = {Learner.PPO: 0.2, Learner.SAC: None}
+    GG_NOISE_LEVEL = {Learner.PPO: None, Learner.SAC: 0.1}
+    GG_FIT_RATE = {Learner.PPO: None, Learner.SAC: 200}
+    GG_P_OLD = {Learner.PPO: None, Learner.SAC: 0.2}
 
     def __init__(self, base_log_dir, curriculum_name, learner_name, parameters, seed, device):
         super().__init__(base_log_dir, curriculum_name, learner_name, parameters, seed, device)
@@ -100,37 +117,44 @@ class SafetyDoor2DExperiment(AbstractExperiment):
         self.eval_env.initialize_wrapper(**wrapper_kwargs)
 
     def create_environment(self, evaluation=False):
-        env_id = "ContextualSafetyDoor2D-v0"
-        special_kwargs = {"save_interval": 10}
+        env_id = "ContextualSafetyMaze3D-v0"
+        special_kwargs = {}
         if evaluation or self.curriculum.default():
-            teacher = DistributionSampler(self.target_sampler, self.LOWER_CONTEXT_BOUNDS, self.UPPER_CONTEXT_BOUNDS)
+            teacher = MazeSampler()
             teacher_id = "DummyTeacher"
+            special_kwargs['reward_from_info'] = True
         elif self.curriculum.alp_gmm():
             teacher = ALPGMM(self.LOWER_CONTEXT_BOUNDS.copy(), self.UPPER_CONTEXT_BOUNDS.copy(), seed=self.seed,
                              fit_rate=self.AG_FIT_RATE[self.learner], random_task_ratio=self.AG_P_RAND[self.learner],
                              max_size=self.AG_MAX_SIZE[self.learner])
             teacher_id = "ALPGMM"
         elif self.curriculum.goal_gan():
-            samples = np.random.uniform(self.LOWER_CONTEXT_BOUNDS, self.UPPER_CONTEXT_BOUNDS, size=(1000, 2))
+            samples = np.random.uniform(self.LOWER_CONTEXT_BOUNDS, self.UPPER_CONTEXT_BOUNDS, size=(1000, 3))
             teacher = GoalGAN(self.LOWER_CONTEXT_BOUNDS.copy(), self.UPPER_CONTEXT_BOUNDS.copy(),
                               state_noise_level=self.GG_NOISE_LEVEL[self.learner], success_distance_threshold=0.01,
-                              update_size=self.GG_FIT_RATE[self.learner], n_rollouts=2, goid_lb=0.25, goid_ub=0.75,
+                              update_size=self.GG_FIT_RATE[self.learner], n_rollouts=4, goid_lb=0.25, goid_ub=0.75,
                               p_old=self.GG_P_OLD[self.learner], pretrain_samples=samples)
             teacher_id = "GoalGAN"
         elif self.curriculum.self_paced() or self.curriculum.wasserstein():
             teacher = self.create_self_paced_teacher()
             teacher_id = "SelfPaced"
             special_kwargs['episodes_per_update'] = self.EP_PER_UPDATE
+            special_kwargs['use_undiscounted_reward'] = True
+            special_kwargs['reward_from_info'] = True
             special_kwargs['wait_until_policy_update'] = False
         elif self.curriculum.constrained_self_paced() or self.curriculum.constrained_wasserstein():
             teacher = self.create_self_paced_teacher()
             teacher_id = "ConstrainedSelfPaced"
             special_kwargs['episodes_per_update'] = self.EP_PER_UPDATE
+            special_kwargs['use_undiscounted_reward'] = True
+            special_kwargs['reward_from_info'] = True
             special_kwargs['wait_until_policy_update'] = False
         elif self.curriculum.wasserstein4cost():
             teacher = self.create_self_paced_teacher()
             teacher_id = "SelfPaced4Cost"
             special_kwargs['episodes_per_update'] = self.EP_PER_UPDATE
+            special_kwargs['use_undiscounted_reward'] = True
+            special_kwargs['reward_from_info'] = True
             special_kwargs['wait_until_policy_update'] = False
         elif self.curriculum.acl():
             bins = 50
@@ -144,6 +168,11 @@ class SafetyDoor2DExperiment(AbstractExperiment):
                           self.PLR_BUFFER_SIZE, self.PLR_BETA, self.PLR_RHO)
             teacher_id = "PLR"
             special_kwargs['context_post_processing'] = teacher.post_process
+            special_kwargs['lam'] = self.LAM
+            special_kwargs['value_fn'] = ValueFunction(ContextualSafetyMaze3D.observation_space.shape[0] + self.LOWER_CONTEXT_BOUNDS.shape[0],
+                                                    [128, 128, 128], torch.nn.ReLU(),
+                                                    {"steps_per_iter": 2048, "noptepochs": 10,
+                                                     "minibatches": 32, "lr": 3e-4})
         elif self.curriculum.vds():
             teacher = VDS(self.LOWER_CONTEXT_BOUNDS, self.UPPER_CONTEXT_BOUNDS, self.DISCOUNT_FACTOR, self.VDS_NQ,
                           q_train_config={"replay_size": 5 * self.STEPS_PER_ITER, "lr": self.VDS_LR,
@@ -207,7 +236,7 @@ class SafetyDoor2DExperiment(AbstractExperiment):
             Learner.PPO:  {
                 'algo_cfgs': {
                     'steps_per_epoch': self.STEPS_PER_ITER, # to eval, log, actor scheduler step
-                    'update_iters': 12, # 8, # 4, #  10, # gradient steps
+                    'update_iters': 6, # 12, # gradient steps
                     'batch_size': 64, # 128, 
                     'target_kl': 0.02,
                     'entropy_coef': 0.0,
@@ -243,7 +272,7 @@ class SafetyDoor2DExperiment(AbstractExperiment):
             Learner.PPOLag:  {
                 'algo_cfgs': {
                     'steps_per_epoch': self.STEPS_PER_ITER, # to eval, log, actor scheduler step
-                    'update_iters': 12, # 8, # 4, # gradient steps
+                    'update_iters': 6, # 12, # gradient steps
                     'batch_size': 64, # 128,
                     'target_kl': 0.02,
                     'entropy_coef': 0.0,
@@ -308,13 +337,13 @@ class SafetyDoor2DExperiment(AbstractExperiment):
             'model_cfgs':  {
                 'weight_initialization_mode': "kaiming_uniform",
                 'actor': {
-                    'hidden_sizes': [64, 64], # [64, 64], 
-                    'activation': "tanh",
+                    'hidden_sizes': [64, 64], # [128, 128, 128], 
+                    'activation': "tanh", # "relu", 
                     'lr': 3e-4,
                 },
                 'critic': {
-                    'hidden_sizes': [64, 64], # [128, 128], 
-                    'activation': "tanh",
+                    'hidden_sizes': [64, 64], # [128, 128, 128], 
+                    'activation': "tanh", # "relu", 
                     'lr': 3e-4,
                 },
             },
@@ -337,9 +366,7 @@ class SafetyDoor2DExperiment(AbstractExperiment):
             obs_shape = model.agent._env._env._observation_space.shape
             action_dim = model.agent._env._env._action_space.shape[0]
             state_provider = lambda contexts: np.concatenate(
-                [np.repeat(np.array([ContextualSafetyDoor2D.ROOM_WIDTH/2-0.5, 0., -3.5, 0.0])[None, :], 
-                           contexts.shape[0], axis=0),
-                 contexts], axis=-1)
+                (ContextualSafetyMaze3D.sample_initial_state(contexts.shape[0]), contexts.shape), axis=-1),
             model.agent._env._env.teacher.initialize_teacher(obs_shape, action_dim, interface, state_provider)
         return model, omnisafe_log_dir 
 
@@ -347,37 +374,37 @@ class SafetyDoor2DExperiment(AbstractExperiment):
         bounds = (self.LOWER_CONTEXT_BOUNDS.copy(), self.UPPER_CONTEXT_BOUNDS.copy())
         if self.curriculum.self_paced():
             return SelfPacedTeacherV2(self.target_log_likelihood, self.target_sampler, self.INITIAL_MEAN.copy(),
-                                      np.diag(np.square([self.INIT_VAR, self.INIT_VAR])), bounds, self.DELTA, max_kl=self.KL_EPS,
+                                      self.INITIAL_VARIANCE.copy(), bounds, self.DELTA, max_kl=self.KL_EPS,
                                       std_lower_bound=self.STD_LOWER_BOUND.copy(), kl_threshold=self.KL_THRESHOLD,
                                       dist_type=self.DIST_TYPE)
         elif self.curriculum.constrained_self_paced():
             return ConstrainedSelfPacedTeacherV2(self.target_log_likelihood, self.target_sampler, self.INITIAL_MEAN.copy(),
-                                                    np.diag(np.square([self.INIT_VAR, self.INIT_VAR])), bounds, self.DELTA,
+                                                    self.INITIAL_VARIANCE.copy(), bounds, self.DELTA,
                                                     cost_ub=self.DELTA_CT, max_kl=self.KL_EPS, 
                                                     std_lower_bound=self.STD_LOWER_BOUND.copy(),
                                                     kl_threshold=self.KL_THRESHOLD, dist_type=self.DIST_TYPE)
         elif self.curriculum.wasserstein():
-            init_samples = np.random.uniform(self.LOWER_CONTEXT_BOUNDS, self.UPPER_CONTEXT_BOUNDS, size=(200, 2))
+            init_samples = np.random.uniform(np.array([-9., -9., 18.]), np.array([9., 9., 18.]), size=(self.INIT_CONTEXT_NUM, 3))
             return CurrOT(bounds, init_samples, self.target_sampler, self.DELTA, self.METRIC_EPS, self.EP_PER_UPDATE,
                           wb_max_reuse=1)
         elif self.curriculum.constrained_wasserstein():
-            init_samples = np.random.uniform(self.LOWER_CONTEXT_BOUNDS, self.UPPER_CONTEXT_BOUNDS, size=(200, 2))
+            init_samples = np.random.uniform(np.array([-9., -9., 18.]), np.array([9., 9., 18.]), size=(self.INIT_CONTEXT_NUM, 3))
             return ConstrainedCurrOT(bounds, init_samples, self.target_sampler, self.DELTA, self.DELTA_CT,
                                      self.METRIC_EPS, self.EP_PER_UPDATE, wb_max_reuse=1, annealing_target_probability=self.ATP, 
                                      cost_annealing_steps=self.CAS, reward_annealing_steps=self.RAS)
         elif self.curriculum.wasserstein4cost():
-            init_samples = np.random.uniform(self.LOWER_CONTEXT_BOUNDS, self.UPPER_CONTEXT_BOUNDS, size=(200, 2))
+            init_samples = np.random.uniform(np.array([-9., -9., 18.]), np.array([9., 9., 18.]), size=(self.INIT_CONTEXT_NUM, 3))
             return CurrOT4Cost(bounds, init_samples, self.target_sampler, self.DELTA_CT, self.METRIC_EPS, self.EP_PER_UPDATE,
                                wb_max_reuse=1)
         else:
             raise RuntimeError("Teacher type '{}' is not self-paced!".format(self.curriculum))
 
     def get_env_name(self):
-        return f"safety_door_2d_{self.TARGET_TYPE}"
+        return f"safety_maze_3d"
 
     def evaluate_learner(self, model_path, eval_type=""):
         num_context = None
-        num_run = 3
+        num_run = 1
 
         model = self.learner.load_for_evaluation(model_path=model_path, 
                                                  obs_space=self.eval_env._observation_space,
@@ -391,6 +418,7 @@ class SafetyDoor2DExperiment(AbstractExperiment):
         else:
             raise ValueError(f"Invalid evaluation context path: {eval_path}")
 
+        print(f"Number of contexts: {num_context}")
         num_succ_eps_per_c = np.zeros(num_context)
         all_costs = np.zeros(num_context)
         all_returns = np.zeros(num_context)
@@ -398,7 +426,9 @@ class SafetyDoor2DExperiment(AbstractExperiment):
             context = eval_contexts[i, :]
             for j in range(num_run):
                 self.eval_env.set_context(context)
+                # print(f"Context: {context} || Eval env context: {self.eval_env.get_context()}")
                 obs, info = self.eval_env.reset()
+                # print(f"Initial obs: {obs}")
                 t = 0
                 terminated = False
                 truncated = False
@@ -410,6 +440,7 @@ class SafetyDoor2DExperiment(AbstractExperiment):
                     with torch.no_grad():
                         action = model(obs.to(self.device))
                     obs, reward, cost, terminated, truncated, info = self.eval_env.step(action)
+                    # print(f"Step: {t} || Action: {action} || Obs: {obs} || Reward: {reward} || Cost: {cost} || Terminated: {terminated} || Truncated: {truncated} || Info: {info}")
                     success.append(info["success"]*1)
                     costs.append(cost)
                     returns.append(reward)
@@ -418,8 +449,10 @@ class SafetyDoor2DExperiment(AbstractExperiment):
                 discs = np.cumprod((np.ones(len(costs))*self.DISCOUNT_FACTOR))/self.DISCOUNT_FACTOR
                 all_costs[i] += discs@np.array(costs) / num_run
                 all_returns[i] += discs@np.array(returns) / num_run
+            # input("END OF EPISODE")
         print(f"Successful Eps: {100 * np.mean(num_succ_eps_per_c)}%")
         print(f"Average Cost: {np.mean(all_costs)}")
+        # input()
         disc_rewards = self.eval_env.get_reward_buffer()
         ave_disc_rewards = []
         for j in range(num_context):

@@ -45,12 +45,16 @@ class ConstrainedSelfPacedWrapper(BaseWrapper):
                            value_fn=None,
                            lam=None,
                            use_undiscounted_reward=False,
+                           reward_from_info=False,
+                           cost_from_info=False,
                            eval_mode=False,
                            penalty_coeff=0.,
+                           wait_until_policy_update=False,
                            ):
         super().initialize_wrapper(log_dir, teacher, discount_factor, context_post_processing, 
                                    episodes_per_update, save_interval, step_divider, value_fn, lam,
-                                   use_undiscounted_reward, eval_mode, penalty_coeff)
+                                   use_undiscounted_reward, reward_from_info, cost_from_info,
+                                   eval_mode, penalty_coeff, wait_until_policy_update)
         self.context_buffer = Buffer(4, episodes_per_update + 1, True)
 
     def done_callback(self, step, cur_initial_state, cur_context, discounted_reward, undiscounted_reward,
@@ -61,15 +65,17 @@ class ConstrainedSelfPacedWrapper(BaseWrapper):
         cost = undiscounted_cost if self.use_undiscounted_reward else discounted_cost
         self.context_buffer.update_buffer((cur_initial_state, cur_context, ret, cost))
         if hasattr(self.teacher, "on_rollout_end"):
-            self.teacher.on_rollout_end(cur_context, ret, 
-                                        cost=discounted_cost if not self.use_undiscounted_reward \
-                                            else undiscounted_cost)
-        
-        if len(self.context_buffer) >= self.episodes_per_update and (
-                self.algorithm_iteration % self.step_divider <= (
-                    self.algorithm_iteration-self.step_length) % self.step_divider):
-            __, contexts, returns, costs = self.context_buffer.read_buffer()
-            self.teacher.update_distribution(np.array(contexts), np.array(returns), np.array(costs))
+            self.teacher.on_rollout_end(cur_context, ret, cost=cost)
+        if self.wait_until_policy_update:
+            if len(self.context_buffer) >= self.episodes_per_update and (
+                    self.algorithm_iteration % self.step_divider <= (
+                        self.algorithm_iteration-self.step_length) % self.step_divider):
+                __, contexts, returns, costs = self.context_buffer.read_buffer()
+                self.teacher.update_distribution(np.array(contexts), np.array(returns), np.array(costs))
+        else:
+            if len(self.context_buffer) >= self.episodes_per_update:
+                __, contexts, returns, costs = self.context_buffer.read_buffer()
+                self.teacher.update_distribution(np.array(contexts), np.array(returns), np.array(costs))
 
     def get_context_buffer(self):
         ins, cons, rews, costs = self.context_buffer.read_buffer()

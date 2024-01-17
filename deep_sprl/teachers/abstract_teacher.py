@@ -51,8 +51,11 @@ class BaseWrapper(CMDP):
                            value_fn=None,
                            lam=None,
                            use_undiscounted_reward=False,
+                           reward_from_info=False,
+                           cost_from_info=False,
                            eval_mode=False,
                            penalty_coeff=0.,
+                           wait_until_policy_update=False,
                            ):
         self.log_dir = log_dir
         self.teacher = teacher
@@ -65,11 +68,14 @@ class BaseWrapper(CMDP):
         self.value_fn = value_fn
         self.lam = lam
         self.use_undiscounted_reward = use_undiscounted_reward
+        self.reward_from_info = reward_from_info
+        self.cost_from_info = cost_from_info
         self.eval_mode = eval_mode
         self.penalty_coeff = penalty_coeff
+        self.wait_until_policy_update = wait_until_policy_update
 
-        self.stats_buffer = Buffer(5, 10000, True)
-        self.context_trace_buffer = Buffer(5, 10000, True)
+        self.stats_buffer = Buffer(6, 10000, True)
+        self.context_trace_buffer = Buffer(7, 10000, True)
 
         self.algorithm_iteration = 0
         self.iteration = 0
@@ -78,6 +84,11 @@ class BaseWrapper(CMDP):
         self.discounted_reward = 0.
         self.undiscounted_cost = 0.
         self.discounted_cost = 0.
+        self.undiscounted_reward_for_teacher = 0.
+        self.discounted_reward_for_teacher = 0.
+        self.undiscounted_cost_for_teacher = 0.
+        self.discounted_cost_for_teacher = 0.
+        self.successful = False
         self.cur_disc = 1.
         self.step_length = 0.
 
@@ -87,7 +98,7 @@ class BaseWrapper(CMDP):
 
     def init_step_callback(self):
         self.last_time = None
-        self.format = "   %4d    | %.1E |   %3d    |  %.2E  |  %.2E  |  %.2E  |  %.2E  "
+        self.format = "   %4d    | %.1E |   %3d    |  %.2E  |  %.2E  |  %.2E  |  %.2E  |  %.2E  "
         if self.penalty_coeff != 0.:
             self.format += "|  %.2E  |  %.2E  "
         if self.teacher is not None:
@@ -99,7 +110,7 @@ class BaseWrapper(CMDP):
                 text += "] "
                 self.format += text + text
         header = " Iteration |  Time   | Ep. Len. | Mean Reward | Mean Disc. Reward "+\
-            "| Mean Cost | Mean Disc. Cost "
+            "| Mean Cost | Mean Disc. Cost | Mean Success "
         if self.penalty_coeff != 0.:
             header += "| Mean PenRew | Mean Disc. PenRew "
         if self.teacher is not None:
@@ -127,8 +138,8 @@ class BaseWrapper(CMDP):
                 dt = t_new - self.last_time
             data_tpl += (dt,)
 
-            mean_rew, mean_disc_rew, mean_cost, mean_disc_cost, mean_length = self.get_statistics()
-            data_tpl += (int(mean_length), mean_rew, mean_disc_rew, mean_cost, mean_disc_cost,)
+            mean_rew, mean_disc_rew, mean_cost, mean_disc_cost, mean_success, mean_length = self.get_statistics()
+            data_tpl += (int(mean_length), mean_rew, mean_disc_rew, mean_cost, mean_disc_cost, mean_success,)
             if self.penalty_coeff != 0.:
                 data_tpl += (mean_rew - self.penalty_coeff * mean_cost,
                              mean_disc_rew - self.penalty_coeff * mean_disc_cost,)
@@ -156,6 +167,8 @@ class BaseWrapper(CMDP):
 
     def step(self, action):
         obs, reward, cost, terminated, truncated, info = self._env.step(action)
+        if info["success"]:
+            self.successful = True
         obs = torch.cat((obs, torch.as_tensor(self.processed_context))).float()
         self.update((obs, reward, cost, terminated, truncated, info))
         self.step_callback()
@@ -165,22 +178,16 @@ class BaseWrapper(CMDP):
             self, 
             seed: int = None,
             options: Dict[str, Any] = None):
-        # input("RESET!")
         if self.cur_context is None:
-            # print("Sampling context")
             self.cur_context = self.teacher.sample()
         if self.context_post_processing is None:
             self.processed_context = self.cur_context.copy()
         else:
             self.processed_context = self.context_post_processing(self.cur_context.copy())
-        # print("Context:", self.cur_context)
         self._env.context = self.processed_context.copy()
         obs, info = self._env.reset(seed=seed, options=options)
         obs = torch.cat((obs, torch.as_tensor(self.processed_context))).float()
-        # print("Initial obs:", obs)
         self.cur_initial_state = obs.detach().clone()
-        # input("***** RESET *****")
-        # print("Context:", self.cur_context, "Obs:", obs, "Info:", info)
         return obs, info
 
     def set_context(self, context):
@@ -194,33 +201,40 @@ class BaseWrapper(CMDP):
 
     def update(self, step):
         obs, reward, cost, terminated, truncated, info = step
+        if self.reward_from_info:
+            self.undiscounted_reward_for_teacher += info["reward"]
+            self.discounted_reward_for_teacher += self.cur_disc * info["reward"]
+        else:
+            self.undiscounted_reward_for_teacher += reward
+            self.discounted_reward_for_teacher += self.cur_disc * reward
+        if self.cost_from_info:
+            self.undiscounted_cost_for_teacher += info["cost"]
+            self.discounted_cost_for_teacher += self.cur_disc * info["cost"]
+        else:
+            self.undiscounted_cost_for_teacher += cost
+            self.discounted_cost_for_teacher += self.cur_disc * cost
         if "final_observation" in info:
             info["final_observation"] = torch.cat((info["final_observation"], torch.as_tensor(self.processed_context))).float()
-        
-        # These keys are used to log EpRet and EpCost
-        # EpCost is used in the Lagrangian
-        # info["original_reward"] = self.cur_disc * reward
-        # info["original_cost"] = self.cur_disc * cost
-
+        if "success" in info:
+            if info["success"]:
+                self.successful = True 
+    
         self.undiscounted_reward += reward
         self.discounted_reward += self.cur_disc * reward
         self.undiscounted_cost += cost
         self.discounted_cost += self.cur_disc * cost
         self.cur_disc *= self.discount_factor
         self.step_length += 1.
-        # print("Step:", self.step_length, "Obs:", obs, "Reward:", reward, "Cost:", cost, "Terminated:", terminated, "Truncated:", truncated, "Info:", info)
         if terminated or truncated:
-            # print("Done!", "Undisc. Reward:", self.undiscounted_reward, "Disc. Reward:", self.discounted_reward, 
-            #       "Undisc. Cost:", self.undiscounted_cost, "Disc. Cost:", self.discounted_cost,
-            #       "Undisc. PenRew:", self.undiscounted_reward - self.penalty_coeff * self.undiscounted_cost,
-            #       "Disc. PenRew:", self.discounted_reward - self.penalty_coeff * self.discounted_cost)
             self.done_callback(step, self.cur_initial_state.detach().clone(), self.cur_context, 
-                               self.discounted_reward, self.undiscounted_reward,
-                               self.discounted_cost, self.undiscounted_cost)
+                               self.discounted_reward_for_teacher, self.undiscounted_reward_for_teacher,
+                               self.discounted_cost_for_teacher, self.undiscounted_cost_for_teacher)
             self.stats_buffer.update_buffer((self.undiscounted_reward, self.discounted_reward, 
-                                             self.undiscounted_cost, self.discounted_cost, self.step_length))
+                                             self.undiscounted_cost, self.discounted_cost, 
+                                             self.successful, self.step_length))
             self.context_trace_buffer.update_buffer((self.undiscounted_reward, self.discounted_reward,
                                                      self.undiscounted_cost, self.discounted_cost,
+                                                     self.successful, self.step_length, 
                                                      self.processed_context.copy()))
             self.episodes_counter += 1
             if self.episodes_counter >= self.episodes_per_update and (
@@ -232,6 +246,11 @@ class BaseWrapper(CMDP):
             self.discounted_reward = 0.
             self.undiscounted_cost = 0.
             self.discounted_cost = 0.
+            self.undiscounted_reward_for_teacher = 0.
+            self.discounted_reward_for_teacher = 0.
+            self.undiscounted_cost_for_teacher = 0.
+            self.discounted_cost_for_teacher = 0.
+            self.successful = False
             self.cur_disc = 1.
             self.step_length = 0.
 
@@ -241,15 +260,16 @@ class BaseWrapper(CMDP):
 
     def get_statistics(self):
         if len(self.stats_buffer) == 0:
-            return 0., 0., 0., 0., 0
+            return 0., 0., 0., 0., 0., 0
         else:
-            rewards, disc_rewards, costs, disc_costs, steps = self.stats_buffer.read_buffer()
+            rewards, disc_rewards, costs, disc_costs, success, steps = self.stats_buffer.read_buffer()
             mean_reward = np.mean(rewards)
             mean_disc_reward = np.mean(disc_rewards)
             mean_cost = np.mean(costs)
             mean_disc_cost = np.mean(disc_costs)
+            mean_success = np.mean(success)
             mean_step_length = np.mean(steps)
-            return mean_reward, mean_disc_reward, mean_cost, mean_disc_cost, mean_step_length
+            return mean_reward, mean_disc_reward, mean_cost, mean_disc_cost, mean_success, mean_step_length
 
     def get_encountered_contexts(self):
         return self.context_trace_buffer.read_buffer()

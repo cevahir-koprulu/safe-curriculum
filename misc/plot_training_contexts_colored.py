@@ -26,7 +26,7 @@ def load_context_traces(base_dir, seeds, iterations):
             if os.path.exists(perf_file):
                 max_iter = max(max_iter, iteration)
                 with open(perf_file, "rb") as f:
-                    rew, disc_rew, cost, disc_cost, context_trace = pickle.load(f)
+                    rew, disc_rew, cost, disc_cost, succ, step_len, context_trace = pickle.load(f)
                     iter_context_traces[seed] = np.array(context_trace)
                     iter_disc_rew[seed] = np.array(disc_rew)
                     iter_disc_cost[seed] = np.array(disc_cost)
@@ -54,6 +54,7 @@ def plot_results(base_log_dir, num_updates_per_iteration, seeds, env, setting, a
     final_iterations_step = iterations*steps_per_iter
 
     fig, axes = plt.subplots(context_dim, len(seeds), figsize=figsize, constrained_layout=True)
+    axes = np.array(axes).reshape(context_dim, len(seeds))
     suptitle = f"Progression of sampled contexts during training with " + "return" if color_type == "return" else "cost"
     plt.suptitle(suptitle)
 
@@ -140,26 +141,44 @@ def plot_results(base_log_dir, num_updates_per_iteration, seeds, env, setting, a
 
 def main():
     base_log_dir = os.path.join(Path(os.getcwd()).parent, "logs")
-    num_updates_per_iteration = 5
-    seeds = [str(i) for i in range(1, 8)]
-    env = "safety_door_2d_narrow"
-    figname_extra = "_rExp0.8_lBorder=0.01_slp=0.5_walled_training_ANNEALED_s1-7"
+    num_updates_per_iteration = 10
+    seeds = [str(i) for i in range(1, 6)]
+    # env = "safety_door_2d_narrow"
+    # figname_extra = "_D=25_DCS=0_training_contexts_s1-5"
+    env = "safety_maze_3d"
+    figname_extra = "_DCS=0_training_contexts_s1-5_maxstep=0.5_spc=0.5_tanh_correctlogpv1_EPU=40_SPI=2000"
     # color_type = "return"
     color_type = "cost"
 
     algorithms = {
         "safety_door_2d_narrow": {
-            "CURROTL_D=25_MEPS=0.5": {
+            "CURROTL_MEPS=0.5": {
                 "algorithm": "wasserstein",
-                "label": "CURROTL_D=25_MEPS=0.5",
-                "model": "PPOLag_DELTA=25.0_METRIC_EPS=0.5",
+                "label": "CURROTL_MEPS=0.5",
+                "model": "PPOLag_DELTA_CS=0.0_DELTA=25.0_METRIC_EPS=0.5",
                 "color": "red",
                 "cmap": "Reds",
             },
-            "CURROTL_D=25_MEPS=0.25": {
+            "CCURROTL_DCT=1.5_MEPS=0.5": {
+                "algorithm": "constrained_wasserstein",
+                "label": "CCURROTL_DCT=1.5_MEPS=0.5",
+                "model": "PPOLag_DELTA_CS=0.0_ATP=0.75_CAS=10_DELTA=25.0_DELTA_CT=1.5_METRIC_EPS=0.5_RAS=10",
+                "color": "blue",
+                "cmap": "Blues",
+            },
+        },
+        "safety_maze_3d": {
+            # "CCURROTL_ATP=1.0_MEPS=1.25_D=0.6_DCT=1.0": {
+            #     "algorithm": "constrained_wasserstein",
+            #     "label": "CCURROTL_MEPS=1.25_D=0.6_DCT=1.0",
+            #     "model": "PPOLag_DELTA_CS=0.0_ATP=1.0_CAS=10_DELTA=0.6_DELTA_CT=1.0_METRIC_EPS=1.25_RAS=10",
+            #     "color": "blue",
+            #     "cmap": "Blues",
+            # },
+            "CURROTL_MEPS=1.25_D=0.6": {
                 "algorithm": "wasserstein",
-                "label": "CURROTL_D=25_MEPS=0.25",
-                "model": "PPOLag_DELTA=25.0_METRIC_EPS=0.25",
+                "label": "CCURROTL_MEPS=1.25_D=0.6_DCT=1.0",
+                "model": "PPOLag_DELTA_CS=0.0_DELTA=0.6_METRIC_EPS=1.25",
                 "color": "blue",
                 "cmap": "Blues",
             },
@@ -182,6 +201,30 @@ def main():
                 1: {
                     "ylabel": 'Door Width',
                     "ylim": [0., 8.],
+                },
+            },
+            "return_bounds": [25., 70.],
+            "cost_bounds": [0., 10.],
+        },
+        "safety_maze_3d": {
+            "context_dim": 3,
+            "num_iters": 500,
+            "steps_per_iter": 4000,
+            "fontsize": 16,
+            "figsize": (30, 10),
+            "bbox_to_anchor": (.5, 1.05),
+            "subplot_settings": {
+                0: {
+                    "ylabel": 'Goal Position X',
+                    "ylim": [-9., 9.],
+                },
+                1: {
+                    "ylabel": 'Goal Position Y',
+                    "ylim": [-9., 9.],
+                },
+                2: {
+                    "ylabel": 'Tolerance',
+                    "ylim": [0., 18.],
                 },
             },
             "return_bounds": [25., 70.],

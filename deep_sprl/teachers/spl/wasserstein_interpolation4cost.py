@@ -27,8 +27,10 @@ class WassersteinInterpolation4Cost:
         lb = [0.] * self.n_samples
         ub = [1.] * self.n_samples
 
-        cl = [-np.inf] + [cost_ub] * self.n_samples
-        cu = [epsilon] + [np.inf] * self.n_samples
+        # cl = [-np.inf] + [cost_ub] * self.n_samples
+        # cu = [epsilon] + [np.inf] * self.n_samples
+        cl = [-np.inf] + [0.] * self.n_samples
+        cu = [epsilon] + [cost_ub] * self.n_samples
         self.nlp = ipopt.Problem(n=self.n_samples, m=len(cl), problem_obj=self, lb=lb, ub=ub, cl=cl, cu=cu)
 
         # ... and configure some options of it (e.g. that we do not need to be so perfectly accurate,
@@ -103,7 +105,7 @@ class WassersteinInterpolation4Cost:
         return np.concatenate((j1[None, :], np.diag(j2)), axis=0)
 
     def update_distribution(self, model, success_samples):
-        # We reset the current samples to the success samples, if they are below the performance threshold
+        # We reset the current samples to the success samples, if they are above the cost threshold
         init_samples = self.current_samples.copy()
         high_costs = model.predict_individual(init_samples) > self.cost_ub
         if np.any(high_costs):

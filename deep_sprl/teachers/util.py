@@ -9,6 +9,7 @@ class Buffer:
     def __init__(self, n_elements, max_buffer_size, reset_on_query):
         self.reset_on_query = reset_on_query
         self.max_buffer_size = max_buffer_size
+        self.n_elements = n_elements
         self.buffers = [list() for i in range(0, n_elements)]
 
     def update_buffer(self, datas):

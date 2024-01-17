@@ -338,15 +338,16 @@ class AbstractExperiment(ABC):
         iteration_dirs = [d for d in os.listdir(log_dir) if d.startswith("iteration-")]
         unsorted_iterations = np.array([int(d[len("iteration-"):]) for d in iteration_dirs])
         idxs = np.argsort(unsorted_iterations)
-        sorted_iteration_dirs = np.array(iteration_dirs)[idxs].tolist()
+        sorted_iteration_dirs = [f"iteration-{i}" for i in unsorted_iterations[idxs]]
 
         with open(os.path.join(log_dir, 'omnisafe_log_dir.txt'), 'r') as f:
             omnisafe_log_dir = f.read()
         omnisafe_saved_models = [d for d in os.listdir(os.path.join(omnisafe_log_dir, 'torch_save'))]
-        unsorted_models = np.array([int(d[len("epoch-"):-3]) for d in omnisafe_saved_models])
+        unsorted_models = np.array([int(d[len("epoch-"):-3]) for d in omnisafe_saved_models
+                                    if f'iteration-{d[len("epoch-"):-3]}' in iteration_dirs])
         idxs = np.argsort(unsorted_models)
-        sorted_models = np.array(omnisafe_saved_models)[idxs].tolist()
-        
+        sorted_models =[f"epoch-{model_i}.pt" for model_i in unsorted_models[idxs]]
+
         # First evaluate the KL-Divergences if Self-Paced learning was used
         if self.curriculum.self_paced() and not os.path.exists(os.path.join(log_dir, "kl_divergences.pkl")):
             kl_divergences = []
@@ -370,8 +371,8 @@ class AbstractExperiment(ABC):
             performance_log_dir = os.path.join(iteration_log_dir, f"{performance_files[eval_type]}.npy")
             model_path = os.path.join(omnisafe_log_dir, 'torch_save', saved_model)
             eval_type_str = performance_files[eval_type][len("performance"):]
-            if not os.path.exists(performance_log_dir):
-            # if True:
+            # if not os.path.exists(performance_log_dir):
+            if True:
                 disc_rewards, eval_contexts, context_p, successful_eps, costs = self.evaluate_learner(
                     model_path=model_path,
                     eval_type=eval_type_str,

@@ -10,14 +10,19 @@ sys.path.insert(1, os.path.join(sys.path[0], '..'))
 
 os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 
-def update_results(res_dict, res):
-    res_dict["mid"].append(np.median(res, axis=0))
-    res_dict["qlow"].append(np.quantile(res, 0.25, axis=0))
-    res_dict["qhigh"].append(np.quantile(res, 0.75, axis=0))
+def update_results(res_dict, res, use_mean_and_std=False):
+    if use_mean_and_std:
+        res_dict["mid"].append(np.mean(res, axis=0))
+        res_dict["qlow"].append(np.mean(res, axis=0)-np.std(res, axis=0))
+        res_dict["qhigh"].append(np.mean(res, axis=0)+np.std(res, axis=0))
+    else:
+        res_dict["mid"].append(np.median(res, axis=0))
+        res_dict["qlow"].append(np.quantile(res, 0.25, axis=0))
+        res_dict["qhigh"].append(np.quantile(res, 0.75, axis=0))
     res_dict["min"].append(np.min(res, axis=0))
-    res_dict["max"].append(np.max(res, axis=0)) 
+    res_dict["max"].append(np.max(res, axis=0))
 
-def get_results(base_dir, seeds, iterations, cost_th=0.):
+def get_results(base_dir, seeds, iterations, cost_th=0., use_mean_and_std=False):
     ret_dict = {"mid": [], "qlow": [], "qhigh": [], "min": [], "max": []}
     cost_dict = {"mid": [], "qlow": [], "qhigh": [], "min": [], "max": []}
     succ_dict = {"mid": [], "qlow": [], "qhigh": [], "min": [], "max": []}
@@ -45,15 +50,15 @@ def get_results(base_dir, seeds, iterations, cost_th=0.):
                 acc_ex_costs[seed] += max(np.mean(cost)-cost_th, 0.)
         if len(rets) > 0:
             final_rets, final_costs, final_succs = rets, costs, succs
-            update_results(ret_dict, np.array(rets))
-            update_results(cost_dict, np.array(costs))
-            update_results(succ_dict, np.array(succs))
-            update_results(acc_ex_cost_dict, np.array(list(acc_ex_costs.values())))
+            update_results(ret_dict, np.array(rets), use_mean_and_std)
+            update_results(cost_dict, np.array(costs), use_mean_and_std)
+            update_results(succ_dict, np.array(succs), use_mean_and_std)
+            update_results(acc_ex_cost_dict, np.array(list(acc_ex_costs.values())),use_mean_and_std)
     print(final_rets, final_costs, final_succs)
     print(f"succ_dict: {succ_dict['mid']}")
     return ret_dict, cost_dict, succ_dict, acc_ex_cost_dict, max_iter
 
-def plot_results(base_log_dir, num_updates_per_iteration, seeds, env, setting, algorithms, figname_extra):
+def plot_results(base_log_dir, num_updates_per_iteration, seeds, env, setting, algorithms, figname_extra, use_mean_and_std):
     plt.rcParams['font.family'] = 'serif'
     plt.rcParams['font.serif'] = ['Times New Roman'] + plt.rcParams['font.serif']
     plt.rcParams['font.size'] = setting["fontsize"]
@@ -88,6 +93,7 @@ def plot_results(base_log_dir, num_updates_per_iteration, seeds, env, setting, a
             seeds=seeds,
             iterations=iterations,
             cost_th=setting["cost_threshold"],
+            use_mean_and_std=use_mean_and_std,
         )
         print(f"max_iter: {max_iter}")
         iterations_step = iterations_step[:(max_iter//num_updates_per_iteration+1)]
@@ -174,67 +180,59 @@ def plot_results(base_log_dir, num_updates_per_iteration, seeds, env, setting, a
     if not os.path.exists(os.path.join(Path(os.getcwd()).parent, "figures")):
         os.makedirs(os.path.join(Path(os.getcwd()).parent, "figures"))
 
+    figname_extra += "_mean_and_std" if use_mean_and_std else ""
+
     figpath = os.path.join(Path(os.getcwd()).parent, "figures", f"{env}_{figname}{figname_extra}.pdf")
     print(figpath)
     plt.savefig(figpath, dpi=500, bbox_inches='tight', bbox_extra_artists=(lgd,))
 
 def main():
     base_log_dir = os.path.join(Path(os.getcwd()).parent, "logs")
-    num_updates_per_iteration = 5
-    seeds = [str(i) for i in range(1, 8)]
-    env = "safety_door_2d_narrow"
-    figname_extra = "_rExp0.8_lBorder=0.01_slp=0.5_walled_ANNEALED_excess_s1-7"
-
+    num_updates_per_iteration = 10
+    seeds = [str(i) for i in range(1, 6)]
+    # env = "safety_door_2d_narrow"
+    # figname_extra = "_D=25_DCS=0_s1-5"
+    env = "safety_maze_3d"
+    figname_extra = "_DCS=0_s1-5_maxstep=0.5_spc=0.5_tanh_correctlogpv1_EPU=40_SPI=2000"
+    use_mean_and_std = False
     algorithms = {
         "safety_door_2d_narrow": {
-            "CURROTL_D=25_MEPS=0.5": {
+            "CURROTL_MEPS=0.5": {
                 "algorithm": "wasserstein",
-                "label": "CURROTL_D=25_MEPS=0.5",
-                "model": "PPOLag_DELTA=25.0_METRIC_EPS=0.5",
+                "label": "CURROTL_MEPS=0.5",
+                "model": "PPOLag_DELTA_CS=0.0_DELTA=25.0_METRIC_EPS=0.5",
                 "color": "red",
                 "cmap": "Reds",
             },
-            "CURROTL_D=25_MEPS=0.25": {
-                "algorithm": "wasserstein",
-                "label": "CURROTL_D=25_MEPS=0.25",
-                "model": "PPOLag_DELTA=25.0_METRIC_EPS=0.25",
+            "CCURROTL_DCT=1.5_MEPS=0.5": {
+                "algorithm": "constrained_wasserstein",
+                "label": "CCURROTL_DCT=1.5_MEPS=0.5",
+                "model": "PPOLag_DELTA_CS=0.0_ATP=0.75_CAS=10_DELTA=25.0_DELTA_CT=1.5_METRIC_EPS=0.5_RAS=10",
                 "color": "blue",
                 "cmap": "Blues",
             },
-            # "CCURROTL_D=25_DCE=1.25_ATP=0.75_MEPS=0.25": {
+        },
+        "safety_maze_3d": {
+            # "CCURROTL_ATP=1.0_MEPS=1.25_D=0.6_DCT=1.0": {
             #     "algorithm": "constrained_wasserstein",
-            #     "label": "CCURROTL_D=25_DCE=1.25_ATP=0.75_MEPS=0.25",
-            #     "model": "PPOLag_ATP=0.75_CAS=10_DELTA=25.0_DELTA_C=0.0_DELTA_C_EXT=1.25_METRIC_EPS=0.25_RAS=10",
+            #     "label": "CCURROTL_MEPS=1.25_D=0.6_DCT=1.0",
+            #     "model": "PPOLag_DELTA_CS=0.0_ATP=1.0_CAS=10_DELTA=0.6_DELTA_CT=1.0_METRIC_EPS=1.25_RAS=10",
             #     "color": "blue",
             #     "cmap": "Blues",
             # },
-            # "CSPDL2_D=20_DCE=7.5_KL=0.5": {
-            #     "algorithm": "constrained_self_paced",
-            #     "label": "CSPDL_D=20_DCE=7.5_KL=0.5",
-            #     "model": "PPOLag_DELTA=20.0_DELTA_C=0.0_DELTA_C_EXT=7.5_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.5",
-            #     "color": "green",
-            #     "cmap": "Greens",
-            # },
-            # "CURROTL_D=25_MEPS=0.5": {
-            #     "algorithm": "wasserstein",
-            #     "label": "CURROTL_D=25_MEPS=0.5",
-            #     "model": "PPOLag_DELTA=25.0_METRIC_EPS=0.5",
-            #     "color": "red",
-            #     "cmap": "Reds",
-            # },
-            # "SPDL2_D=20_KL=0.5": {
-            #     "algorithm": "self_paced",
-            #     "label": "SPDL2_D=20_KL=0.5",
-            #     "model": "PPOLag_DELTA=20.0_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.5",
-            #     "color": "purple",
-            #     "cmap": "Purples",
-            # }, 
+            "CURROTL_MEPS=1.25_D=0.6": {
+                "algorithm": "wasserstein",
+                "label": "CCURROTL_MEPS=1.25_D=0.6_DCT=1.0",
+                "model": "PPOLag_DELTA_CS=0.0_DELTA=0.6_METRIC_EPS=1.25",
+                "color": "blue",
+                "cmap": "Blues",
+            },
         },
     }
 
     settings = {
         "safety_door_2d_narrow":{
-            "cost_threshold": 0.0,
+            "cost_threshold": 5.0,
             "plot_success": True,
             "num_iters": 500,
             "steps_per_iter": 4000,
@@ -260,6 +258,33 @@ def main():
                 },
             },
         },
+        "safety_maze_3d":{
+            "cost_threshold": 0.,
+            "plot_success": True,
+            "num_iters": 500,
+            "steps_per_iter": 4000,
+            "fontsize": 16,
+            "figsize": (10, 10),
+            "bbox_to_anchor": (.5, 1.05),
+            "subplot_settings": {
+                0: {
+                    "ylabel": 'Ave. return',
+                    "ylim": [-0., 10.],
+                },
+                1: {
+                    "ylabel": 'Ave. cum. cost',
+                    "ylim": [-5.0, 25.],
+                },
+                2: {
+                    "ylabel": 'Ave. acc. ex. cost',
+                    "ylim": [-5.0, 200.],
+                },
+                3: {
+                    "ylabel": 'Ave. succ. rate',
+                    "ylim": [-0.1, 1.1],
+                },
+            },
+        },
     }
 
     plot_results(
@@ -270,6 +295,7 @@ def main():
         setting=settings[env],
         algorithms=algorithms[env],
         figname_extra=figname_extra,
+        use_mean_and_std=use_mean_and_std,
         )
 
 if __name__ == "__main__":

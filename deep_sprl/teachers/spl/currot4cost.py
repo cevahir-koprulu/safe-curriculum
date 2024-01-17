@@ -22,14 +22,14 @@ class CurrOT4Cost(AbstractTeacher):
         self.context_bounds = context_bounds
         self.threshold_reached = not wait_until_threshold
         self.teacher = WassersteinInterpolation4Cost(init_samples, target_sampler, cost_ub, epsilon, callback=callback)
-        self.success_buffer = WassersteinSuccessBuffer(cost_ub, init_samples.shape[0], episodes_per_update, epsilon,
+        self.success_buffer = WassersteinSuccessBuffer4Cost(cost_ub, init_samples.shape[0], episodes_per_update, epsilon,
                                                        context_bounds=context_bounds, max_reuse=wb_max_reuse)
         self.fail_context_buffer = []
-        self.fail_return_buffer = []
+        self.fail_cost_buffer = []
         self.sampler = UniformSampler(self.context_bounds)
 
     def __str__(self) -> str:
-        return "wasserstein"
+        return "wasserstein4cost"
 
     def on_rollout_end(self, context, cost):
         self.sampler.update(context, cost)
@@ -42,8 +42,8 @@ class CurrOT4Cost(AbstractTeacher):
         if self.threshold_reached:
             self.fail_context_buffer.extend(fail_contexts)
             self.fail_context_buffer = self.fail_context_buffer[-self.teacher.n_samples:]
-            self.fail_return_buffer.extend(fail_costs)
-            self.fail_return_buffer = self.fail_return_buffer[-self.teacher.n_samples:]
+            self.fail_cost_buffer.extend(fail_costs)
+            self.fail_cost_buffer = self.fail_cost_buffer[-self.teacher.n_samples:]
 
         success_contexts, success_costs = self.success_buffer.read_train()
         if len(self.fail_context_buffer) == 0:
@@ -51,15 +51,15 @@ class CurrOT4Cost(AbstractTeacher):
             train_costs = success_costs
         else:
             train_contexts = np.concatenate((np.stack(self.fail_context_buffer, axis=0), success_contexts), axis=0)
-            train_costs = np.concatenate((np.stack(self.fail_return_buffer, axis=0), success_costs), axis=0)
+            train_costs = np.concatenate((np.stack(self.fail_cost_buffer, axis=0), success_costs), axis=0)
         self.model.update_model(train_contexts, train_costs)
 
-        if self.threshold_reached or self.model(self.teacher.current_samples) >= self.teacher.perf_lb:
+        if self.threshold_reached or self.model(self.teacher.current_samples) <= self.teacher.cost_ub:
             self.threshold_reached = True
             self.teacher.update_distribution(self.model, self.success_buffer.read_update())
         else:
-            print("Not updating sampling distribution, as performance threshold not met: %.3e vs %.3e" % (
-                self.model(self.teacher.current_samples), self.teacher.perf_lb))
+            print("Not updating sampling distribution, as cost threshold not met: %.3e vs %.3e" % (
+                self.model(self.teacher.current_samples), self.teacher.cost_ub))
 
     def sample(self):
         sample = self.sampler(self.teacher.current_samples)
@@ -78,7 +78,7 @@ class CurrOT4Cost(AbstractTeacher):
         self.sampler.load(path)
 
 
-class AbstractSuccessBuffer(ABC):
+class AbstractSuccessBuffer4Cost(ABC):
 
     def __init__(self, delta: float, n: int, epsilon: float, context_bounds: Tuple[np.ndarray, np.ndarray]):
         context_exts = context_bounds[1] - context_bounds[0]
@@ -180,12 +180,13 @@ class AbstractSuccessBuffer(ABC):
         self.set_data(data)
 
 
-class WassersteinSuccessBuffer(AbstractSuccessBuffer):
+class WassersteinSuccessBuffer4Cost(AbstractSuccessBuffer4Cost):
 
     def __init__(self, delta: float, n: int, ep_per_update: int, epsilon: float,
                  context_bounds: Tuple[np.ndarray, np.ndarray], max_reuse=3):
         super().__init__(delta, n, epsilon, context_bounds)
         self.max_reuse = max_reuse
+        self.ep_per_update = ep_per_update
         self.solver = AssignmentSolver(ep_per_update, n, max_reuse=self.max_reuse, verbose=False)
         self.last_assignments = None
 
@@ -235,6 +236,17 @@ class WassersteinSuccessBuffer(AbstractSuccessBuffer):
         if n_new > 0:
             remove_mask = self.costs > self.delta
             if not np.any(remove_mask) and self.max_reuse * self.costs.shape[0] >= current_samples.shape[0]:
+                print(f"self.contexts: {self.contexts.shape} || contexts: {contexts.shape} || "+\
+                      f"contexts[mask,:]: {contexts[mask,:].shape} || current_samples: {current_samples.shape}")
+                if self.last_assignments is not None:
+                    print(f"self.last_assignments[0]: {self.last_assignments[0].shape} || self.last_assignments[1]: {self.last_assignments[1].shape}")
+                if n_new + self.contexts.shape[0] > self.max_size + self.ep_per_update:
+                    print("Source sample size (self.contexts + contexts[mask]) is larger than the target sample size (max_size + ep_per_update)")
+                    # pick a random index from mask and make it False
+                    mask[np.random.choice(np.where(mask)[0])] = False
+                    n_new -= 1
+                    print(f"NEW! context[mask] shape: {contexts[mask].shape}")
+
                 # At this stage we use the optimizer
                 assignments = self.solver(self.contexts, contexts[mask], current_samples, self.last_assignments)
                 source_idxs, target_idxs = np.where(assignments)

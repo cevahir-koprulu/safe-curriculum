@@ -159,7 +159,7 @@ class AbstractConstrainedSuccessBuffer(ABC):
         # if self.max_cost is None:
         #     self.max_cost = np.max(costs)
         self.min_ret = min(np.min(returns), self.min_ret)
-        self.max_cost = max(np.max(costs), self.max_cost)
+        self.max_cost = max(np.max(costs), self.max_cost) + 1e-4
 
         if not self.delta_c_reached:
             self.delta_c_reached, self.contexts, self.returns, self.costs, mask = self.update_delta_c_not_reached(
@@ -310,6 +310,7 @@ class WassersteinConstrainedSuccessBuffer(AbstractConstrainedSuccessBuffer):
         super().__init__(delta, delta_c, n, epsilon, context_bounds, 
                          annealing_target_probability, cost_annealing_steps, reward_annealing_steps)
         self.max_reuse = max_reuse
+        self.ep_per_update = ep_per_update
         self.solver = AssignmentSolver(ep_per_update, n, max_reuse=self.max_reuse, verbose=False)
         self.last_assignments = None
 
@@ -422,6 +423,18 @@ class WassersteinConstrainedSuccessBuffer(AbstractConstrainedSuccessBuffer):
         if n_new > 0:
             remove_mask = np.logical_or(self.returns < self.delta, self.costs > self.delta_c)
             if not np.any(remove_mask) and self.max_reuse * self.returns.shape[0] >= current_samples.shape[0]:
+                if n_new + self.contexts.shape[0] > self.max_size + self.ep_per_update:
+                    print(f"self.contexts: {self.contexts.shape} || contexts: {contexts.shape} || "+\
+                    f"contexts[mask,:]: {contexts[mask,:].shape} || current_samples: {current_samples.shape}")
+                    if self.last_assignments is not None:
+                        print(f"self.last_assignments[0]: {self.last_assignments[0].shape} || self.last_assignments[1]: {self.last_assignments[1].shape}")
+                    print("Source sample size (self.contexts + contexts[mask]) is larger than the target sample size (max_size + ep_per_update)")
+                    # pick a random index from mask and make it False
+                    mask[np.random.choice(np.where(mask)[0])] = False
+                    n_new -= 1
+                    print(f"NEW! context[mask] shape: {contexts[mask].shape}")
+
+                
                 # At this stage we use the optimizer
                 assignments = self.solver(self.contexts, contexts[mask], current_samples, self.last_assignments)
                 source_idxs, target_idxs = np.where(assignments)

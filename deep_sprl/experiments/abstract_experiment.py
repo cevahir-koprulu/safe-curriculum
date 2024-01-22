@@ -231,8 +231,8 @@ class Learner(Enum):
 class AbstractExperiment(ABC):
     APPENDIX_KEYS = {
                     "default": ["DISCOUNT_FACTOR", "STEPS_PER_ITER", "LAM"],
-                     CurriculumType.SelfPaced: ["DELTA", "KL_EPS", "DIST_TYPE", "INIT_VAR"],
-                     CurriculumType.Wasserstein: ["DELTA", "METRIC_EPS"],
+                     CurriculumType.SelfPaced: ["DELTA", "KL_EPS", "DIST_TYPE", "INIT_VAR", "PEN_COEFT"],
+                     CurriculumType.Wasserstein: ["DELTA", "METRIC_EPS", "PEN_COEFT"],
                      CurriculumType.GoalGAN: ["GG_NOISE_LEVEL", "GG_FIT_RATE", "GG_P_OLD"],
                      CurriculumType.ALPGMM: ["AG_P_RAND", "AG_FIT_RATE", "AG_MAX_SIZE"],
                      CurriculumType.Random: [],
@@ -297,8 +297,9 @@ class AbstractExperiment(ABC):
                              "VDS_NQ": int, "VDS_LR": float, "VDS_EPOCHS": int, "VDS_BATCHES": int,
                              "DIST_TYPE": str, "TARGET_TYPE": str, "KL_EPS": float, 
                              "EP_PER_UPDATE": int, "INIT_VAR":float, 
-                             "DELTA_CS": float, "DELTA_CT": float,
+                             "DELTA_CS": float, "DELTA_CT": float, ""
                              "METRIC_EPS": float, "ATP": float, "CAS": int, "RAS": int,
+                             "PEN_COEFS": float, "PEN_COEFT": float,
         }
         for key in sorted(self.parameters.keys()):
             if key not in allowed_overrides:
@@ -316,6 +317,8 @@ class AbstractExperiment(ABC):
         leaner_string = str(self.learner)
         if self.learner.is_constrained():
             leaner_string += "_DELTA_CS=" + str(self.DELTA_CS).replace(" ", "")
+        else:
+            learner_string += f"PEN_COEFS={self.PEN_COEFS}"
         key_list = self.APPENDIX_KEYS[self.curriculum]
         for key in sorted(key_list):
             tmp = getattr(self, key)

@@ -49,13 +49,13 @@ class ContextualSafetyMaze3D(CMDP):
         self._action_space = spaces.Box(low=-1., high=1., shape=(2,))
         self._observation_space = spaces.Box(low=-9., high=9., shape=(2,))
         self._state = None
-        self.max_step = 0.5 # 0.3
+        self.max_step = 0.5
         self._timestep = 0
         self._lava_passes = 0
         self._context = np.array([6., 6., 0.05]) # Top right with tolerance of 0.05
         self._viewer = Viewer(20, 20, background=(255, 255, 255))
 
-        self._single_pass_cost = 0.5 # 0.1
+        self._single_pass_cost = 0.25 # 0.5 # 0.1
 
     @staticmethod
     def sample_initial_state(n=None):

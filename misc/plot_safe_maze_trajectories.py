@@ -200,13 +200,13 @@ def plot_trajectories(base_log_dir, policy_from_iteration, seeds, exp, env_name,
 
 def main():
     base_log_dir = Path(os.getcwd()).parent
-    policy_from_iteration = 80
+    policy_from_iteration = 500
     seeds = [str(i) for i in range(1, 6)]
     # seeds = [2,3,5]
     rl_algorithm = "PPOLag"
     experiment_name = "safety_maze_3d"
     env_name = "ContextualSafetyDoor2D-v0"
-    figname_extra = "_D=0.6_DCT=0_DCS=0_s1-5_maxstep=0.5_spc=0.5_tanh_correctlogpv2"
+    figname_extra = "_MEPS=1.25_DCS=0_s1-5_EPU=40_SPI=4000_gs=12_newcontextbounds"
     discount_factor = 0.99
     
     # context = load_eval_contexts(experiment_name)[0]
@@ -214,7 +214,7 @@ def main():
     # context = np.array([-3., 6., 0.05])
     # context = np.array([-6., 6., 1.*np.sqrt(2)])
     # context = np.array([-6., 6., 0.05])
-    context = np.array([6., -6., 1.*np.sqrt(2)])
+    # context = np.array([0., 6., 1.*np.sqrt(2)])
 
     if experiment_name == "safety_maze_3d":
         from deep_sprl.experiments import SafetyMaze3DExperiment
@@ -228,19 +228,26 @@ def main():
 
     algorithms = {
         "safety_maze_3d": {
-            "CCURROTL_MEPS=1.0": {
+            "CCURROTL_ATP=1.0_DCT=0.5_D=0.6": {
                 "algorithm": "constrained_wasserstein",
-                "label": "CCURROTL_MEPS=1.0",
-                "model": "PPOLag_DELTA_CS=0.0_ATP=0.75_CAS=10_DELTA=0.6_DELTA_CT=0.0_METRIC_EPS=1.0_RAS=10",
-                "color": "red",
-                "cmap": "Reds",
-            },
-            "CCURROTL_MEPS=1.25": {
-                "algorithm": "constrained_wasserstein",
-                "label": "CCURROTL_MEPS=1.25",
-                "model": "PPOLag_DELTA_CS=0.0_ATP=0.75_CAS=10_DELTA=0.6_DELTA_CT=0.0_METRIC_EPS=1.25_RAS=10",
+                "label": "CCURROTL_ATP=1.0_DCT=0.5_D=0.6",
+                "model": "PPOLag_DELTA_CS=0.0_ATP=1.0_CAS=10_DELTA=0.6_DELTA_CT=0.5_METRIC_EPS=1.25_RAS=10",
                 "color": "blue",
                 "cmap": "Blues",
+            },
+            "CCURROTL_ATP=1.0_DCT=0.5_D=0.5": {
+                "algorithm": "constrained_wasserstein",
+                "label": "CCURROTL_ATP=1.0_DCT=0.5_D=0.5",
+                "model": "PPOLag_DELTA_CS=0.0_ATP=1.0_CAS=10_DELTA=0.5_DELTA_CT=0.5_METRIC_EPS=1.25_RAS=10",
+                "color": "green",
+                "cmap": "Greens",
+            },
+            "CURROTL_D=0.6": {
+                "algorithm": "wasserstein",
+                "label": "CURROTL_D=0.6",
+                "model": "PPOLag_DELTA_CS=0.0_DELTA=0.6_METRIC_EPS=1.25",
+                "color": "red",
+                "cmap": "Reds",
             },
         },
     }
@@ -253,19 +260,21 @@ def main():
         },
     }
 
-    plot_trajectories(
-        base_log_dir=base_log_dir,
-        policy_from_iteration=policy_from_iteration,
-        seeds=seeds,
-        exp=exp,
-        env_name=env_name,
-        experiment_name=experiment_name,
-        discount_factor=discount_factor,
-        setting=settings[experiment_name],
-        algorithms=algorithms[experiment_name],
-        figname_extra=figname_extra,
-        context=context,
-        )
+    for context in load_eval_contexts(experiment_name)[:5]:
+        context_ = np.concatenate((context[:2], np.array([0.5])))
+        plot_trajectories(
+            base_log_dir=base_log_dir,
+            policy_from_iteration=policy_from_iteration,
+            seeds=seeds,
+            exp=exp,
+            env_name=env_name,
+            experiment_name=experiment_name,
+            discount_factor=discount_factor,
+            setting=settings[experiment_name],
+            algorithms=algorithms[experiment_name],
+            figname_extra=figname_extra,
+            context=context_,
+            )
 
 if __name__ == "__main__":
     main()

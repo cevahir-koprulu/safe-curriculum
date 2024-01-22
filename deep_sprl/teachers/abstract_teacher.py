@@ -54,7 +54,8 @@ class BaseWrapper(CMDP):
                            reward_from_info=False,
                            cost_from_info=False,
                            eval_mode=False,
-                           penalty_coeff=0.,
+                           penalty_coeff_s=0.,
+                           penalty_coeff_t=0.,
                            wait_until_policy_update=False,
                            ):
         self.log_dir = log_dir
@@ -71,7 +72,8 @@ class BaseWrapper(CMDP):
         self.reward_from_info = reward_from_info
         self.cost_from_info = cost_from_info
         self.eval_mode = eval_mode
-        self.penalty_coeff = penalty_coeff
+        self.penalty_coeff_s = penalty_coeff_s
+        self.penalty_coeff_t = penalty_coeff_t
         self.wait_until_policy_update = wait_until_policy_update
 
         self.stats_buffer = Buffer(6, 10000, True)
@@ -99,7 +101,9 @@ class BaseWrapper(CMDP):
     def init_step_callback(self):
         self.last_time = None
         self.format = "   %4d    | %.1E |   %3d    |  %.2E  |  %.2E  |  %.2E  |  %.2E  |  %.2E  "
-        if self.penalty_coeff != 0.:
+        if self.penalty_coeff_s != 0.:
+            self.format += "|  %.2E  |  %.2E  "
+        if self.penalty_coeff_t != 0.: 
             self.format += "|  %.2E  |  %.2E  "
         if self.teacher is not None:
             if str(self.teacher)=="self_paced" or str(self.teacher)=="constrained_self_paced":
@@ -111,8 +115,10 @@ class BaseWrapper(CMDP):
                 self.format += text + text
         header = " Iteration |  Time   | Ep. Len. | Mean Reward | Mean Disc. Reward "+\
             "| Mean Cost | Mean Disc. Cost | Mean Success "
-        if self.penalty_coeff != 0.:
-            header += "| Mean PenRew | Mean Disc. PenRew "
+        if self.penalty_coeff_s != 0.:
+            header += "| Mean PenRewS | Mean Disc. PenRewS "
+        if self.penalty_coeff_t != 0.:
+            header += "| Mean PenRewT | Mean Disc. PenRewT "
         if self.teacher is not None:
             if str(self.teacher)=="self_paced":
                 header += "|     Context mean     |      Context std     "
@@ -140,9 +146,12 @@ class BaseWrapper(CMDP):
 
             mean_rew, mean_disc_rew, mean_cost, mean_disc_cost, mean_success, mean_length = self.get_statistics()
             data_tpl += (int(mean_length), mean_rew, mean_disc_rew, mean_cost, mean_disc_cost, mean_success,)
-            if self.penalty_coeff != 0.:
-                data_tpl += (mean_rew - self.penalty_coeff * mean_cost,
-                             mean_disc_rew - self.penalty_coeff * mean_disc_cost,)
+            if self.penalty_coeff_s != 0.:
+                data_tpl += (mean_rew - self.penalty_coeff_s * mean_cost,
+                             mean_disc_rew - self.penalty_coeff_s * mean_disc_cost,)
+            if self.penalty_coeff_t != 0.:
+                data_tpl += (mean_rew - self.penalty_coeff_t * mean_cost,
+                             mean_disc_rew - self.penalty_coeff_t * mean_disc_cost,)
 
             if str(self.teacher)=="self_paced" or str(self.teacher)=="constrained_self_paced":
                 context_mean = self.teacher.context_dist.mean()

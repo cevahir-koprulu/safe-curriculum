@@ -216,13 +216,14 @@ class VDSWrapper(BaseWrapper):
                            reward_from_info=False,
                            cost_from_info=False,
                            eval_mode=False,
-                           penalty_coeff=0.,
+                           penalty_coeff_s=0.,
+                           penalty_coeff_t=0.,
                            wait_until_policy_update=False,
                             ):
         super().initialize_wrapper(log_dir, teacher, discount_factor, context_post_processing, 
                                    episodes_per_update, save_interval, step_divider, value_fn, lam,
                                    use_undiscounted_reward, reward_from_info, cost_from_info,
-                                   eval_mode, penalty_coeff, wait_until_policy_update)
+                                   eval_mode, penalty_coeff_s, penalty_coeff_t, wait_until_policy_update)
         self.last_obs = None
         self.step_count = 0
 

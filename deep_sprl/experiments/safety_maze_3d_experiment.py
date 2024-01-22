@@ -22,8 +22,10 @@ from deep_sprl.environments.safety_maze import ContextualSafetyMaze3D
 
 class MazeSampler:
     def __init__(self):
-        self.LOWER_CONTEXT_BOUNDS = np.array([-9., -9., 0.05])
-        self.UPPER_CONTEXT_BOUNDS = np.array([9., 9., 0.05])
+        # self.LOWER_CONTEXT_BOUNDS = np.array([-9., -9., 0.05])
+        # self.UPPER_CONTEXT_BOUNDS = np.array([9., 9., 0.05])
+        self.LOWER_CONTEXT_BOUNDS = np.array([-9., -9., 0.5])
+        self.UPPER_CONTEXT_BOUNDS = np.array([9., 9., 0.5])
 
     def sample(self):
         sample = np.random.uniform(self.LOWER_CONTEXT_BOUNDS, self.UPPER_CONTEXT_BOUNDS)
@@ -38,27 +40,33 @@ class MazeSampler:
         pass
 
 class SafetyMaze3DExperiment(AbstractExperiment):
-    PENALTY_COEFFICIENT = {Learner.SAC: 0.0, 
-                           Learner.PPO: 1.0,
-                           Learner.PPOLag: 0.0}
+    PEN_COEFS = {Learner.SAC: 0.0, 
+                Learner.PPO: 1.0, 
+                Learner.PPOLag: 0.0}
 
     INIT_VAR = 0.0 # Redundant
-    INITIAL_MEAN = np.array([0., 0., 10])
-    INITIAL_VARIANCE = np.diag(np.square([4, 4, 5]))
+    # INITIAL_MEAN = np.array([0., 0., 10])
+    # INITIAL_VARIANCE = np.diag(np.square([4, 4, 5]))
+    INITIAL_MEAN = np.array([0., 0., 3.])
+    INITIAL_VARIANCE = np.diag(np.square([4.5, 4.5, 1.]))
 
-    TARGET_LOWER_CONTEXT_BOUNDS = np.array([-7., 5., 0.05])
-    TARGET_UPPER_CONTEXT_BOUNDS = np.array([7., 7., 0.05])
+    TARGET_TOLERANCE = 0.5
+    TARGET_TOLERANCE_W = 0.5
+    TARGET_LOWER_CONTEXT_BOUNDS = np.array([-7., 5., TARGET_TOLERANCE])
+    TARGET_UPPER_CONTEXT_BOUNDS = np.array([7., 7., TARGET_TOLERANCE+TARGET_TOLERANCE_W])
 
-    LOWER_CONTEXT_BOUNDS = np.array([-9., -9., 0.05])
-    UPPER_CONTEXT_BOUNDS = np.array([9., 9., 18.])
+    LOWER_CONTEXT_BOUNDS = np.array([-9., -9., TARGET_TOLERANCE])
+    # UPPER_CONTEXT_BOUNDS = np.array([9., 9., 18.])
+    UPPER_CONTEXT_BOUNDS = np.array([9., 9., 5.])
 
     def target_log_likelihood(self, cs):
         l0, l1, l2 = self.TARGET_LOWER_CONTEXT_BOUNDS
         u0, u1, u2 = self.TARGET_UPPER_CONTEXT_BOUNDS
         area_target = (u0 - l0) * (u1 - l1)
         area_rest = np.prod(self.UPPER_CONTEXT_BOUNDS[:2] - self.LOWER_CONTEXT_BOUNDS[:2]) - area_target
-        norm = (area_target * 1 + area_rest * 1e-4) * (0.01 * 1 + 17.94 * 1e-4) 
-        in_support = (cs[:, -1] < 0.06) & (l0<=cs[:,0]) & (cs[:,0]<=u0) & (l1<=cs[:,1]) & (cs[:,1]<=u1)
+        norm = (area_target * 1 + area_rest * 1e-4) * (
+            self.TARGET_TOLERANCE_W * 1 + (u2-(self.TARGET_TOLERANCE+self.TARGET_TOLERANCE_W)) * 1e-4) 
+        in_support = (cs[:, -1] < self.TARGET_TOLERANCE+self.TARGET_TOLERANCE_W) & (l0<=cs[:,0]) & (cs[:,0]<=u0) & (l1<=cs[:,1]) & (cs[:,1]<=u1)
         return np.where(in_support, np.log(1 / norm) * np.ones(cs.shape[0]), np.log(1e-4 / norm) * np.ones(cs.shape[0]))
 
     def target_sampler(self, n, rng=None):
@@ -73,16 +81,17 @@ class SafetyMaze3DExperiment(AbstractExperiment):
     KL_EPS = 0.25
     DELTA = 0.6
     DELTA_CS = 0.0 
-    DELTA_CT = 1.0
+    DELTA_CT = 0.25 # 0.5 # 1.0
     METRIC_EPS = 1.25
     INIT_CONTEXT_NUM = 200
     EP_PER_UPDATE = 40 # 20
+    PEN_COEFT = 0.0
     ATP = 1.0 # 0.75 # annealing target probability for CCURROT
     CAS = 10 # number of cost annealing steps for CCURROT
     RAS = 10 # number of reward annealing steps for CCURROT
     
     NUM_ITER = 500
-    STEPS_PER_ITER = 2000 # 4000
+    STEPS_PER_ITER = 4000 # 2000
     DISCOUNT_FACTOR = 0.99 # 0.995
     LAM = 0.95 # 0.995
 
@@ -190,7 +199,8 @@ class SafetyMaze3DExperiment(AbstractExperiment):
                           'discount_factor': self.DISCOUNT_FACTOR,
                           'step_divider': self.STEPS_PER_ITER,
                           'eval_mode': evaluation,
-                          'penalty_coeff': self.PENALTY_COEFFICIENT[self.learner]}
+                          'penalty_coeff_s': self.PEN_COEFS[self.learner],
+                          'penalty_coeff_t': self.PEN_COEFT}
         
         wrapper_kwargs = update_params(wrapper_kwargs, special_kwargs)
         return env_id, teacher_id, wrapper_kwargs
@@ -236,7 +246,7 @@ class SafetyMaze3DExperiment(AbstractExperiment):
             Learner.PPO:  {
                 'algo_cfgs': {
                     'steps_per_epoch': self.STEPS_PER_ITER, # to eval, log, actor scheduler step
-                    'update_iters': 6, # 12, # gradient steps
+                    'update_iters': 12, # 8 # 6, # gradient steps
                     'batch_size': 64, # 128, 
                     'target_kl': 0.02,
                     'entropy_coef': 0.0,
@@ -256,7 +266,7 @@ class SafetyMaze3DExperiment(AbstractExperiment):
                     'adv_estimation_method': 'gae',
                     'standardized_rew_adv': True,
                     'standardized_cost_adv': True,
-                    'penalty_coef': self.PENALTY_COEFFICIENT[self.learner],
+                    'penalty_coef': self.PEN_COEFS[self.learner],
                     'use_cost': False,
                 },
                 'logger_cfgs': {
@@ -272,7 +282,7 @@ class SafetyMaze3DExperiment(AbstractExperiment):
             Learner.PPOLag:  {
                 'algo_cfgs': {
                     'steps_per_epoch': self.STEPS_PER_ITER, # to eval, log, actor scheduler step
-                    'update_iters': 6, # 12, # gradient steps
+                    'update_iters': 12, # 8 # 6, # gradient steps
                     'batch_size': 64, # 128,
                     'target_kl': 0.02,
                     'entropy_coef': 0.0,
@@ -372,6 +382,10 @@ class SafetyMaze3DExperiment(AbstractExperiment):
 
     def create_self_paced_teacher(self):
         bounds = (self.LOWER_CONTEXT_BOUNDS.copy(), self.UPPER_CONTEXT_BOUNDS.copy())
+        # init_lb = np.concatenate((self.LOWER_CONTEXT_BOUNDS[:2],[self.UPPER_CONTEXT_BOUNDS[-1]]))
+        # init_ub = self.UPPER_CONTEXT_BOUNDS.copy()
+        init_lb = np.concatenate((np.array([-9.,-9.]),[self.UPPER_CONTEXT_BOUNDS[-1]]))
+        init_ub = np.concatenate((np.array([9.,-5.]),[self.UPPER_CONTEXT_BOUNDS[-1]]))
         if self.curriculum.self_paced():
             return SelfPacedTeacherV2(self.target_log_likelihood, self.target_sampler, self.INITIAL_MEAN.copy(),
                                       self.INITIAL_VARIANCE.copy(), bounds, self.DELTA, max_kl=self.KL_EPS,
@@ -384,16 +398,19 @@ class SafetyMaze3DExperiment(AbstractExperiment):
                                                     std_lower_bound=self.STD_LOWER_BOUND.copy(),
                                                     kl_threshold=self.KL_THRESHOLD, dist_type=self.DIST_TYPE)
         elif self.curriculum.wasserstein():
-            init_samples = np.random.uniform(np.array([-9., -9., 18.]), np.array([9., 9., 18.]), size=(self.INIT_CONTEXT_NUM, 3))
+            # init_samples = np.random.uniform(np.array([-9., -9., 18.]), np.array([9., 9., 18.]), size=(self.INIT_CONTEXT_NUM, 3))
+            init_samples = np.random.uniform(init_lb, init_ub, size=(self.INIT_CONTEXT_NUM, 3))
             return CurrOT(bounds, init_samples, self.target_sampler, self.DELTA, self.METRIC_EPS, self.EP_PER_UPDATE,
                           wb_max_reuse=1)
         elif self.curriculum.constrained_wasserstein():
-            init_samples = np.random.uniform(np.array([-9., -9., 18.]), np.array([9., 9., 18.]), size=(self.INIT_CONTEXT_NUM, 3))
+            # init_samples = np.random.uniform(np.array([-9., -9., 18.]), np.array([9., 9., 18.]), size=(self.INIT_CONTEXT_NUM, 3))
+            init_samples = np.random.uniform(init_lb, init_ub, size=(self.INIT_CONTEXT_NUM, 3))
             return ConstrainedCurrOT(bounds, init_samples, self.target_sampler, self.DELTA, self.DELTA_CT,
                                      self.METRIC_EPS, self.EP_PER_UPDATE, wb_max_reuse=1, annealing_target_probability=self.ATP, 
                                      cost_annealing_steps=self.CAS, reward_annealing_steps=self.RAS)
         elif self.curriculum.wasserstein4cost():
-            init_samples = np.random.uniform(np.array([-9., -9., 18.]), np.array([9., 9., 18.]), size=(self.INIT_CONTEXT_NUM, 3))
+            # init_samples = np.random.uniform(np.array([-9., -9., 18.]), np.array([9., 9., 18.]), size=(self.INIT_CONTEXT_NUM, 3))
+            init_samples = np.random.uniform(init_lb, init_ub, size=(self.INIT_CONTEXT_NUM, 3))
             return CurrOT4Cost(bounds, init_samples, self.target_sampler, self.DELTA_CT, self.METRIC_EPS, self.EP_PER_UPDATE,
                                wb_max_reuse=1)
         else:

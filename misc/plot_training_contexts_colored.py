@@ -142,46 +142,95 @@ def plot_results(base_log_dir, num_updates_per_iteration, seeds, env, setting, a
 def main():
     base_log_dir = os.path.join(Path(os.getcwd()).parent, "logs")
     num_updates_per_iteration = 10
-    seeds = [str(i) for i in range(1, 6)]
-    # env = "safety_door_2d_narrow"
-    # figname_extra = "_D=25_DCS=0_training_contexts_s1-5"
-    env = "safety_maze_3d"
-    figname_extra = "_DCS=0_training_contexts_s1-5_maxstep=0.5_spc=0.5_tanh_correctlogpv1_EPU=40_SPI=2000"
+    seeds = [str(i) for i in range(6, 11)]
+    env = "safety_door_2d_narrow"
+    figname_extra = "_MEPS=0.5_D=25_DCS=0.0_training_contexts_s6-10"
+    # env = "safety_maze_3d"
+    # figname_extra = "_D=0.6_MEPS=1.25_DCS=0_training_contexts_s6-10_spc=0.25"
     # color_type = "return"
     color_type = "cost"
 
     algorithms = {
         "safety_door_2d_narrow": {
-            "CURROTL_MEPS=0.5": {
+            # "CURROTL_PEN_COEFT=0.0": {
+            #     "algorithm": "wasserstein",
+            #     "label": "CURROTL_PEN_COEFT=0.0",
+            #     "model": "PPOLag_DELTA_CS=2.5_DELTA=25.0_METRIC_EPS=0.5_PEN_COEFT=0.0",
+            #     "color": "red",
+            #     "cmap": "Reds",
+            # },
+            # "CURROTL_PEN_COEFT=1.0": {
+            #     "algorithm": "wasserstein",
+            #     "label": "CURROTL_PEN_COEFT=1.0",
+            #     "model": "PPOLag_DELTA_CS=2.5_DELTA=25.0_METRIC_EPS=0.5_PEN_COEFT=1.0",
+            #     "color": "green",
+            #     "cmap": "Greens",
+            # },
+            # "CCURROTL_DCT=2.0": {
+            #     "algorithm": "constrained_wasserstein",
+            #     "label": "CCURROTL_DCT=2.0",
+            #     "model": "PPOLag_DELTA_CS=2.5_ATP=0.75_CAS=10_DELTA=25.0_DELTA_CT=2.0_METRIC_EPS=0.5_RAS=10",
+            #     "color": "blue",
+            #     "cmap": "Blues",
+            # },
+            "CURROTL_PEN_COEFT=0.0": {
                 "algorithm": "wasserstein",
-                "label": "CURROTL_MEPS=0.5",
-                "model": "PPOLag_DELTA_CS=0.0_DELTA=25.0_METRIC_EPS=0.5",
+                "label": "CURROTL_PEN_COEFT=0.0",
+                "model": "PPOLag_DELTA_CS=0.0_DELTA=25.0_METRIC_EPS=0.5_PEN_COEFT=0.0",
                 "color": "red",
                 "cmap": "Reds",
             },
-            "CCURROTL_DCT=1.5_MEPS=0.5": {
+            "CURROTL_PEN_COEFT=1.0": {
+                "algorithm": "wasserstein",
+                "label": "CURROTL_PEN_COEFT=1.0",
+                "model": "PPOLag_DELTA_CS=0.0_DELTA=25.0_METRIC_EPS=0.5_PEN_COEFT=1.0",
+                "color": "green",
+                "cmap": "Greens",
+            },
+            "CCURROTL_DCT=1.5": {
                 "algorithm": "constrained_wasserstein",
-                "label": "CCURROTL_DCT=1.5_MEPS=0.5",
+                "label": "CCURROTL_DCT=1.5",
                 "model": "PPOLag_DELTA_CS=0.0_ATP=0.75_CAS=10_DELTA=25.0_DELTA_CT=1.5_METRIC_EPS=0.5_RAS=10",
                 "color": "blue",
                 "cmap": "Blues",
             },
+            # "CURROT4CostL_DCT=1.5": {
+            #     "algorithm": "wasserstein4cost",
+            #     "label": "CURROT4CostL_DCT=1.5",
+            #     "model": "PPOLag_DELTA_CS=0.0_DELTA_CT=1.5_METRIC_EPS=0.5",
+            #     "color": "purple",
+            #     "cmap": "Purples",
+            # },
         },
         "safety_maze_3d": {
-            # "CCURROTL_ATP=1.0_MEPS=1.25_D=0.6_DCT=1.0": {
-            #     "algorithm": "constrained_wasserstein",
-            #     "label": "CCURROTL_MEPS=1.25_D=0.6_DCT=1.0",
-            #     "model": "PPOLag_DELTA_CS=0.0_ATP=1.0_CAS=10_DELTA=0.6_DELTA_CT=1.0_METRIC_EPS=1.25_RAS=10",
-            #     "color": "blue",
-            #     "cmap": "Blues",
-            # },
-            "CURROTL_MEPS=1.25_D=0.6": {
-                "algorithm": "wasserstein",
-                "label": "CCURROTL_MEPS=1.25_D=0.6_DCT=1.0",
-                "model": "PPOLag_DELTA_CS=0.0_DELTA=0.6_METRIC_EPS=1.25",
+            "CCURROTL_DCT=0.25": {
+                "algorithm": "constrained_wasserstein",
+                "label": "CCURROTL_DCT=0.5",
+                "model": "PPOLag_DELTA_CS=0.0_ATP=1.0_CAS=10_DELTA=0.6_DELTA_CT=0.25_METRIC_EPS=1.25_RAS=10",
                 "color": "blue",
                 "cmap": "Blues",
             },
+            "CURROTL": {
+                "algorithm": "wasserstein",
+                "label": "CURROTL",
+                "model": "PPOLag_DELTA_CS=0.0_DELTA=0.6_METRIC_EPS=1.25_PEN_COEFT=0.0",
+                "color": "red",
+                "cmap": "Reds",
+            },
+            "CURROTL_PENCOEFT=1": {
+                "algorithm": "wasserstein",
+                "label": "CURROTL_PENCOEFT=1",
+                "model": "PPOLag_DELTA_CS=0.0_DELTA=0.6_METRIC_EPS=1.25_PEN_COEFT=1.0",
+                "color": "green",
+                "cmap": "Greens",
+            },
+            # "CURROT4CostL_DCT=0.25": {
+            #     "algorithm": "wasserstein4cost",
+            #     "label": "CURROT4CostL_DCT=0.25",
+            #     "model": "PPOLag_DELTA_CS=0.0_DELTA_CT=0.25_METRIC_EPS=1.25",
+            #     "color": "purple",
+            #     "cmap": "Purples",
+            # },
         },
     }
 

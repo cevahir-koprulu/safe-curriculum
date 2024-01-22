@@ -21,9 +21,9 @@ from scipy.stats import multivariate_normal
 from deep_sprl.environments.safety_door import ContextualSafetyDoor2D
 
 class SafetyDoor2DExperiment(AbstractExperiment):
-    PENALTY_COEFFICIENT = {Learner.SAC: 0.0, 
-                           Learner.PPO: 1.0,
-                           Learner.PPOLag: 0.0}
+    PEN_COEFS = {Learner.SAC: 0.0,
+              Learner.PPO: 1.0,
+              Learner.PPOLag: 0.0}
 
     TARGET_TYPE = "narrow"
     TARGET_MEAN = np.array([ContextualSafetyDoor2D.ROOM_WIDTH*0.3125, 0.5])
@@ -60,6 +60,7 @@ class SafetyDoor2DExperiment(AbstractExperiment):
     DELTA_CT = 1.5 # 3.75
     METRIC_EPS = 0.5
     EP_PER_UPDATE = 20
+    PEN_COEFT = 0.0
     ATP = 0.75 # annealing target probability for CCURROT
     CAS = 10 # number of cost annealing steps for CCURROT
     RAS = 10 # number of reward annealing steps for CCURROT
@@ -161,7 +162,8 @@ class SafetyDoor2DExperiment(AbstractExperiment):
                           'discount_factor': self.DISCOUNT_FACTOR,
                           'step_divider': self.STEPS_PER_ITER,
                           'eval_mode': evaluation,
-                          'penalty_coeff': self.PENALTY_COEFFICIENT[self.learner]}
+                          'penalty_coeff_s': self.PEN_COEFS[self.learner],
+                          'penalty_coeff_t': self.PEN_COEFT}
         
         wrapper_kwargs = update_params(wrapper_kwargs, special_kwargs)
         return env_id, teacher_id, wrapper_kwargs
@@ -227,7 +229,7 @@ class SafetyDoor2DExperiment(AbstractExperiment):
                     'adv_estimation_method': 'gae',
                     'standardized_rew_adv': True,
                     'standardized_cost_adv': True,
-                    'penalty_coef': self.PENALTY_COEFFICIENT[self.learner],
+                    'penalty_coef': self.PEN_COEFS[self.learner],
                     'use_cost': False,
                 },
                 'logger_cfgs': {

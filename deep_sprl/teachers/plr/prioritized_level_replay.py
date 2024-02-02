@@ -175,14 +175,14 @@ class PLRWrapper(BaseWrapper):
         if self.context_post_processing is None:
             self.processed_context = self.cur_context.copy()
         else:
-            self.processed_context = self.context_post_processing(self.cur_context.copy())
+            self.processed_context = self.context_post_processing(self.cur_context)
         self._env.context = self.processed_context.copy()
         obs, info = self._env.reset(seed=seed, options=options)
-        obs = torch.cat((obs, self.processed_context))
+        obs = torch.cat((obs, torch.as_tensor(self.processed_context))).float()
 
-        self.state_trace = [obs.copy()]
+        self.state_trace = [torch.clone(obs)]
         self.reward_trace = []
-        self.cur_initial_state = obs.copy()
+        self.cur_initial_state = torch.clone(obs)
         return obs, info
 
     def step(self, action):
@@ -190,8 +190,8 @@ class PLRWrapper(BaseWrapper):
         if "final_observation" in info:
             info["final_observation"] = torch.cat((info["final_observation"], torch.as_tensor(self.processed_context))).float()
         self.step_count += 1
-        obs = torch.cat((obs, self.processed_context))
-        self.state_trace.append(obs.copy())
+        obs = torch.cat((obs, torch.as_tensor(self.processed_context))).float()
+        self.state_trace.append(torch.clone(obs))
         self.reward_trace.append(reward)
 
         # In this case PLR trains its own value function (if e.g. using a different algorithm than PPO)
@@ -223,7 +223,7 @@ class PLRWrapper(BaseWrapper):
             estimated_values = self.learner.estimate_value_r(np.array(self.state_trace))
         else:
             estimated_values = self.value_fn(np.array(self.state_trace))
-        self.teacher.update(cur_context, discounted_reward, estimated_values)
+        self.teacher.update(cur_context, discounted_reward.numpy(), estimated_values)
 
 class ValueFunction:
 

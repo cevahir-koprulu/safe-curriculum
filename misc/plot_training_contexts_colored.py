@@ -143,36 +143,17 @@ def main():
     base_log_dir = os.path.join(Path(os.getcwd()).parent, "logs")
     num_updates_per_iteration = 10
     seeds = [str(i) for i in range(6, 11)]
-    env = "safety_door_2d_narrow"
-    figname_extra = "_MEPS=0.5_D=25_DCS=0.0_training_contexts_s6-10"
-    # env = "safety_maze_3d"
-    # figname_extra = "_D=0.6_MEPS=1.25_DCS=0_training_contexts_s6-10_spc=0.25"
+    # env = "safety_door_2d_narrow"
+    # figname_extra = "_D=25_DCS=0.0_training_contexts_s6-10"
+    env = "safety_maze_3d"
+    figname_extra = "_DCS=0_training_contexts_s6-10"
+    # env = "safety_goal_3d"
+    # figname_extra = "_MEPS=0.5_DCS=0_training_contexts_s1-5_new"
     # color_type = "return"
     color_type = "cost"
 
     algorithms = {
         "safety_door_2d_narrow": {
-            # "CURROTL_PEN_COEFT=0.0": {
-            #     "algorithm": "wasserstein",
-            #     "label": "CURROTL_PEN_COEFT=0.0",
-            #     "model": "PPOLag_DELTA_CS=2.5_DELTA=25.0_METRIC_EPS=0.5_PEN_COEFT=0.0",
-            #     "color": "red",
-            #     "cmap": "Reds",
-            # },
-            # "CURROTL_PEN_COEFT=1.0": {
-            #     "algorithm": "wasserstein",
-            #     "label": "CURROTL_PEN_COEFT=1.0",
-            #     "model": "PPOLag_DELTA_CS=2.5_DELTA=25.0_METRIC_EPS=0.5_PEN_COEFT=1.0",
-            #     "color": "green",
-            #     "cmap": "Greens",
-            # },
-            # "CCURROTL_DCT=2.0": {
-            #     "algorithm": "constrained_wasserstein",
-            #     "label": "CCURROTL_DCT=2.0",
-            #     "model": "PPOLag_DELTA_CS=2.5_ATP=0.75_CAS=10_DELTA=25.0_DELTA_CT=2.0_METRIC_EPS=0.5_RAS=10",
-            #     "color": "blue",
-            #     "cmap": "Blues",
-            # },
             "CURROTL_PEN_COEFT=0.0": {
                 "algorithm": "wasserstein",
                 "label": "CURROTL_PEN_COEFT=0.0",
@@ -187,47 +168,91 @@ def main():
                 "color": "green",
                 "cmap": "Greens",
             },
-            "CCURROTL_DCT=1.5": {
+            "SCGL_DCT=1.5": {
                 "algorithm": "constrained_wasserstein",
                 "label": "CCURROTL_DCT=1.5",
                 "model": "PPOLag_DELTA_CS=0.0_ATP=0.75_CAS=10_DELTA=25.0_DELTA_CT=1.5_METRIC_EPS=0.5_RAS=10",
                 "color": "blue",
                 "cmap": "Blues",
             },
-            # "CURROT4CostL_DCT=1.5": {
-            #     "algorithm": "wasserstein4cost",
-            #     "label": "CURROT4CostL_DCT=1.5",
-            #     "model": "PPOLag_DELTA_CS=0.0_DELTA_CT=1.5_METRIC_EPS=0.5",
-            #     "color": "purple",
-            #     "cmap": "Purples",
-            # },
+            "CURROT4CostL_DCT=1.5": {
+                "algorithm": "wasserstein4cost",
+                "label": "CURROT4CostL_DCT=1.5",
+                "model": "PPOLag_DELTA_CS=0.0_DELTA_CT=1.5_METRIC_EPS=0.5",
+                "color": "purple",
+                "cmap": "Purples",
+            },
         },
         "safety_maze_3d": {
-            "CCURROTL_DCT=0.25": {
+            "SCG": {
                 "algorithm": "constrained_wasserstein",
-                "label": "CCURROTL_DCT=0.5",
+                "label": "SCG",
                 "model": "PPOLag_DELTA_CS=0.0_ATP=1.0_CAS=10_DELTA=0.6_DELTA_CT=0.25_METRIC_EPS=1.25_RAS=10",
                 "color": "blue",
                 "cmap": "Blues",
             },
-            "CURROTL": {
+            "CURROT": {
                 "algorithm": "wasserstein",
-                "label": "CURROTL",
+                "label": "CURROT",
                 "model": "PPOLag_DELTA_CS=0.0_DELTA=0.6_METRIC_EPS=1.25_PEN_COEFT=0.0",
                 "color": "red",
                 "cmap": "Reds",
             },
-            "CURROTL_PENCOEFT=1": {
+            "NaiveSafeCURROT": {
                 "algorithm": "wasserstein",
-                "label": "CURROTL_PENCOEFT=1",
+                "label": "NaiveSafeCURROT",
                 "model": "PPOLag_DELTA_CS=0.0_DELTA=0.6_METRIC_EPS=1.25_PEN_COEFT=1.0",
                 "color": "green",
                 "cmap": "Greens",
             },
-            # "CURROT4CostL_DCT=0.25": {
-            #     "algorithm": "wasserstein4cost",
-            #     "label": "CURROT4CostL_DCT=0.25",
-            #     "model": "PPOLag_DELTA_CS=0.0_DELTA_CT=0.25_METRIC_EPS=1.25",
+            "CURROT4Cost": {
+                "algorithm": "wasserstein4cost",
+                "label": "CURROT4Cost",
+                "model": "PPOLag_DELTA_CS=0.0_DELTA_CT=0.25_METRIC_EPS=1.25",
+                "color": "purple",
+                "cmap": "Purples",
+            },
+        },
+        "safety_goal_3d": {
+            "SCG_D=0.6_DCT=1": {
+                "algorithm": "constrained_wasserstein",
+                "label": "SCG_D=0.6_DCT=1",
+                "model": "PPOLag_DELTA_CS=0.0_ATP=1.0_CAS=10_DELTA=0.6_DELTA_CT=1.0_METRIC_EPS=0.5_RAS=10",
+                "color": "blue",
+                "cmap": "Blues",
+            },
+            "SCG_D=0.6_DCT=1.5": {
+                "algorithm": "constrained_wasserstein",
+                "label": "SCG_D=0.6_DCT=1.5",
+                "model": "PPOLag_DELTA_CS=0.0_ATP=1.0_CAS=10_DELTA=0.6_DELTA_CT=1.5_METRIC_EPS=0.5_RAS=10",
+                "color": "red",
+                "cmap": "Reds",
+            },
+            "SCG_D=0.5_DCT=1": {
+                "algorithm": "constrained_wasserstein",
+                "label": "SCG_D=0.5_DCT=1",
+                "model": "PPOLag_DELTA_CS=0.0_ATP=1.0_CAS=10_DELTA=0.5_DELTA_CT=1.0_METRIC_EPS=0.5_RAS=10",
+                "color": "green",
+                "cmap": "Greens",
+            },
+            # "CURROT_D=0.5_PENCOEFT=1": {
+            #     "algorithm": "wasserstein",
+            #     "label": "CURROT_D=0.5_PENCOEFT=1",
+            #     "model": "PPOLag_DELTA_CS=0.0_DELTA=0.5_METRIC_EPS=0.5_PEN_COEFT=1.0",
+            #     "color": "red",
+            #     "cmap": "Reds",
+            # },
+            # "CURROT_D=0.6_PENCOEFT=0": {
+            #     "algorithm": "wasserstein",
+            #     "label": "CURROT_D=0.6_PENCOEFT=0",
+            #     "model": "PPOLag_DELTA_CS=0.0_DELTA=0.6_METRIC_EPS=0.5_PEN_COEFT=0.0",
+            #     "color": "green",
+            #     "cmap": "Greens",
+            # },     
+            # "DEFAULT": {
+            #     "algorithm": "default",
+            #     "label": "DEFAULT",
+            #     "model": "PPOLag_DELTA_CS=0.0",
             #     "color": "purple",
             #     "cmap": "Purples",
             # },
@@ -274,6 +299,30 @@ def main():
                 2: {
                     "ylabel": 'Tolerance',
                     "ylim": [0., 18.],
+                },
+            },
+            "return_bounds": [25., 70.],
+            "cost_bounds": [0., 10.],
+        },
+        "safety_goal_3d": {
+            "context_dim": 3,
+            "num_iters": 150,
+            "steps_per_iter": 10000,
+            "fontsize": 16,
+            "figsize": (30, 10),
+            "bbox_to_anchor": (.5, 1.05),
+            "subplot_settings": {
+                0: {
+                    "ylabel": 'Goal Position X',
+                    "ylim": [-1.5, 1.5],
+                },
+                1: {
+                    "ylabel": 'Goal Position Y',
+                    "ylim": [-1.5, 1.5],
+                },
+                2: {
+                    "ylabel": 'Tolerance',
+                    "ylim": [0.25, 1.],
                 },
             },
             "return_bounds": [25., 70.],

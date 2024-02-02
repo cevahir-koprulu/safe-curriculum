@@ -318,7 +318,7 @@ class AbstractExperiment(ABC):
         if self.learner.is_constrained():
             leaner_string += "_DELTA_CS=" + str(self.DELTA_CS).replace(" ", "")
         else:
-            learner_string += f"PEN_COEFS={self.PEN_COEFS}"
+            leaner_string += f"PEN_COEFS={self.PEN_COEFS}"
         key_list = self.APPENDIX_KEYS[self.curriculum]
         for key in sorted(key_list):
             tmp = getattr(self, key)
@@ -341,15 +341,20 @@ class AbstractExperiment(ABC):
         iteration_dirs = [d for d in os.listdir(log_dir) if d.startswith("iteration-")]
         unsorted_iterations = np.array([int(d[len("iteration-"):]) for d in iteration_dirs])
         idxs = np.argsort(unsorted_iterations)
-        sorted_iteration_dirs = [f"iteration-{i}" for i in unsorted_iterations[idxs]]
+        sorted_iterations = unsorted_iterations[idxs]
+        sorted_iteration_dirs = [f"iteration-{i}" for i in sorted_iterations]
 
         with open(os.path.join(log_dir, 'omnisafe_log_dir.txt'), 'r') as f:
             omnisafe_log_dir = f.read()
         omnisafe_saved_models = [d for d in os.listdir(os.path.join(omnisafe_log_dir, 'torch_save'))]
-        unsorted_models = np.array([int(d[len("epoch-"):-3]) for d in omnisafe_saved_models
-                                    if f'iteration-{d[len("epoch-"):-3]}' in iteration_dirs])
+        # unsorted_models = np.array([int(d[len("epoch-"):-3]) for d in omnisafe_saved_models
+        #                             if f'iteration-{d[len("epoch-"):-3]}' in iteration_dirs])
+        unsorted_models = np.array([int(d[len("epoch-"):-3]) for d in omnisafe_saved_models])
         idxs = np.argsort(unsorted_models)
-        sorted_models =[f"epoch-{model_i}.pt" for model_i in unsorted_models[idxs]]
+        sorted_models = unsorted_models[idxs]
+        # assuming that there is at least one model update per curriculum update
+        num_model_skip = (len(sorted_models)) // (len(sorted_iterations))
+        sorted_model_dirs =[f"epoch-{model_i}.pt" for model_i in sorted_models[::num_model_skip][:len(sorted_iterations)]]
 
         # First evaluate the KL-Divergences if Self-Paced learning was used
         if self.curriculum.self_paced() and not os.path.exists(os.path.join(log_dir, "kl_divergences.pkl")):
@@ -368,7 +373,7 @@ class AbstractExperiment(ABC):
             0: "performance",
             1: "performance_hom",
         }
-        for iteration_dir, saved_model in zip(sorted_iteration_dirs, sorted_models):
+        for iteration_dir, saved_model in zip(sorted_iteration_dirs, sorted_model_dirs):
             print(f"Evaluating {iteration_dir} (eval_type={eval_type})")
             iteration_log_dir = os.path.join(log_dir, iteration_dir)
             performance_log_dir = os.path.join(iteration_log_dir, f"{performance_files[eval_type]}.npy")

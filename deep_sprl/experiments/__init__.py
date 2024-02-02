@@ -2,6 +2,7 @@
 import deep_sprl.environments
 from .safety_door_2d_experiment import SafetyDoor2DExperiment
 from .safety_maze_3d_experiment import SafetyMaze3DExperiment
+from .safety_goal_3d_experiment import SafetyGoal3DExperiment
 from .safety_cartpole_2d_experiment import SafetyCartpole2DExperiment
 from .safety_point_mass_2d_experiment import SafetyPointMass2DExperiment
 from .safety_point_mass_1d_experiment import SafetyPointMass1DExperiment

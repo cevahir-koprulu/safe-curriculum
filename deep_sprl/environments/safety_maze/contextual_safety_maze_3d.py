@@ -78,10 +78,10 @@ class ContextualSafetyMaze3D(CMDP):
     @staticmethod
     def _is_feasible(context):
         # Check that the context is not in or beyond the outer wall
-        if torch.any(context < -7.) or torch.any(context > 7.):
+        if np.any(context < -7.) or np.any(context > 7.):
             return False
         # Check that the context is not within the inner rectangle (i.e. in [-5, 5] x [-5, 5])
-        elif torch.all(torch.logical_and(-5. < context, context < 5.)):
+        elif np.all(np.logical_and(-5. < context, context < 5.)):
             return False
         else:
             return True

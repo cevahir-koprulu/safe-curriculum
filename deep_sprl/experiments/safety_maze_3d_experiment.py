@@ -22,10 +22,10 @@ from deep_sprl.environments.safety_maze import ContextualSafetyMaze3D
 
 class MazeSampler:
     def __init__(self):
-        # self.LOWER_CONTEXT_BOUNDS = np.array([-9., -9., 0.05])
-        # self.UPPER_CONTEXT_BOUNDS = np.array([9., 9., 0.05])
-        self.LOWER_CONTEXT_BOUNDS = np.array([-9., -9., 0.5])
-        self.UPPER_CONTEXT_BOUNDS = np.array([9., 9., 0.5])
+        # self.LOWER_CONTEXT_BOUNDS = np.array([-9., -9., 0.5])
+        # self.UPPER_CONTEXT_BOUNDS = np.array([9., 9., 0.5])
+        self.LOWER_CONTEXT_BOUNDS = np.array([-7., 5., 0.5])
+        self.UPPER_CONTEXT_BOUNDS = np.array([7., 7., 1.0])
 
     def sample(self):
         sample = np.random.uniform(self.LOWER_CONTEXT_BOUNDS, self.UPPER_CONTEXT_BOUNDS)
@@ -44,11 +44,9 @@ class SafetyMaze3DExperiment(AbstractExperiment):
                 Learner.PPO: 1.0, 
                 Learner.PPOLag: 0.0}
 
-    INIT_VAR = 0.0 # Redundant
-    # INITIAL_MEAN = np.array([0., 0., 10])
-    # INITIAL_VARIANCE = np.diag(np.square([4, 4, 5]))
-    INITIAL_MEAN = np.array([0., 0., 3.])
-    INITIAL_VARIANCE = np.diag(np.square([4.5, 4.5, 1.]))
+    INIT_VAR = 0.0
+    INITIAL_MEAN = np.array([0., -7., 2.5])
+    INITIAL_VARIANCE = np.diag(np.square([4, 1, 1.25]))
 
     TARGET_TOLERANCE = 0.5
     TARGET_TOLERANCE_W = 0.5
@@ -76,8 +74,8 @@ class SafetyMaze3DExperiment(AbstractExperiment):
 
     DIST_TYPE = "gaussian"  # "cauchy"
 
-    STD_LOWER_BOUND = np.array([0.1, 0.1])
-    KL_THRESHOLD = 8000.
+    STD_LOWER_BOUND = None # np.array([0.1, 0.1])
+    KL_THRESHOLD = None # 8000.
     KL_EPS = 0.25
     DELTA = 0.6
     DELTA_CS = 0.0 
@@ -109,13 +107,13 @@ class SafetyMaze3DExperiment(AbstractExperiment):
     VDS_EPOCHS = 10
     VDS_BATCHES = 80
 
-    AG_P_RAND = {Learner.PPO: None, Learner.SAC: 0.2}
-    AG_FIT_RATE = {Learner.PPO: None, Learner.SAC: 200}
-    AG_MAX_SIZE = {Learner.PPO: None, Learner.SAC: 500}
+    AG_P_RAND = {Learner.PPO: None, Learner.PPOLag: 0.2, Learner.SAC: 0.2}
+    AG_FIT_RATE = {Learner.PPO: None, Learner.PPOLag: 200, Learner.SAC: 200}
+    AG_MAX_SIZE = {Learner.PPO: None, Learner.PPOLag: 500, Learner.SAC: 500}
 
-    GG_NOISE_LEVEL = {Learner.PPO: None, Learner.SAC: 0.1}
-    GG_FIT_RATE = {Learner.PPO: None, Learner.SAC: 200}
-    GG_P_OLD = {Learner.PPO: None, Learner.SAC: 0.2}
+    GG_NOISE_LEVEL = {Learner.PPO: None, Learner.PPOLag: 0.1,  Learner.SAC: 0.1}
+    GG_FIT_RATE = {Learner.PPO: None, Learner.PPOLag: 200, Learner.SAC: 200}
+    GG_P_OLD = {Learner.PPO: None, Learner.PPOLag: 0.2, Learner.SAC: 0.2}
 
     def __init__(self, base_log_dir, curriculum_name, learner_name, parameters, seed, device):
         super().__init__(base_log_dir, curriculum_name, learner_name, parameters, seed, device)
@@ -166,19 +164,20 @@ class SafetyMaze3DExperiment(AbstractExperiment):
             special_kwargs['reward_from_info'] = True
             special_kwargs['wait_until_policy_update'] = False
         elif self.curriculum.acl():
-            bins = 50
-            teacher = ACL(bins * bins, self.ACL_ETA, eps=self.ACL_EPS, norm_hist_len=2000)
+            bins = 20
+            teacher = ACL(bins * bins * bins, self.ACL_ETA, eps=self.ACL_EPS, norm_hist_len=2000)
             teacher_id = "ACL"
             special_kwargs['context_post_processing'] = Subsampler(self.LOWER_CONTEXT_BOUNDS.copy(),
                                                                      self.UPPER_CONTEXT_BOUNDS.copy(),
-                                                                     [bins, bins])
+                                                                     [bins, bins, bins])
         elif self.curriculum.plr():
             teacher = PLR(self.LOWER_CONTEXT_BOUNDS, self.UPPER_CONTEXT_BOUNDS, self.PLR_REPLAY_RATE,
                           self.PLR_BUFFER_SIZE, self.PLR_BETA, self.PLR_RHO)
             teacher_id = "PLR"
             special_kwargs['context_post_processing'] = teacher.post_process
             special_kwargs['lam'] = self.LAM
-            special_kwargs['value_fn'] = ValueFunction(ContextualSafetyMaze3D.observation_space.shape[0] + self.LOWER_CONTEXT_BOUNDS.shape[0],
+            print(ContextualSafetyMaze3D.observation_space)
+            special_kwargs['value_fn'] = ValueFunction(2 + self.LOWER_CONTEXT_BOUNDS.shape[0],
                                                     [128, 128, 128], torch.nn.ReLU(),
                                                     {"steps_per_iter": 2048, "noptepochs": 10,
                                                      "minibatches": 32, "lr": 3e-4})
@@ -382,14 +381,13 @@ class SafetyMaze3DExperiment(AbstractExperiment):
 
     def create_self_paced_teacher(self):
         bounds = (self.LOWER_CONTEXT_BOUNDS.copy(), self.UPPER_CONTEXT_BOUNDS.copy())
-        # init_lb = np.concatenate((self.LOWER_CONTEXT_BOUNDS[:2],[self.UPPER_CONTEXT_BOUNDS[-1]]))
-        # init_ub = self.UPPER_CONTEXT_BOUNDS.copy()
         init_lb = np.concatenate((np.array([-9.,-9.]),[self.UPPER_CONTEXT_BOUNDS[-1]]))
         init_ub = np.concatenate((np.array([9.,-5.]),[self.UPPER_CONTEXT_BOUNDS[-1]]))
+        init_samples = np.random.uniform(init_lb, init_ub, size=(self.INIT_CONTEXT_NUM, 3))
         if self.curriculum.self_paced():
             return SelfPacedTeacherV2(self.target_log_likelihood, self.target_sampler, self.INITIAL_MEAN.copy(),
                                       self.INITIAL_VARIANCE.copy(), bounds, self.DELTA, max_kl=self.KL_EPS,
-                                      std_lower_bound=self.STD_LOWER_BOUND.copy(), kl_threshold=self.KL_THRESHOLD,
+                                      std_lower_bound=self.STD_LOWER_BOUND, kl_threshold=self.KL_THRESHOLD,
                                       dist_type=self.DIST_TYPE)
         elif self.curriculum.constrained_self_paced():
             return ConstrainedSelfPacedTeacherV2(self.target_log_likelihood, self.target_sampler, self.INITIAL_MEAN.copy(),
@@ -398,19 +396,13 @@ class SafetyMaze3DExperiment(AbstractExperiment):
                                                     std_lower_bound=self.STD_LOWER_BOUND.copy(),
                                                     kl_threshold=self.KL_THRESHOLD, dist_type=self.DIST_TYPE)
         elif self.curriculum.wasserstein():
-            # init_samples = np.random.uniform(np.array([-9., -9., 18.]), np.array([9., 9., 18.]), size=(self.INIT_CONTEXT_NUM, 3))
-            init_samples = np.random.uniform(init_lb, init_ub, size=(self.INIT_CONTEXT_NUM, 3))
             return CurrOT(bounds, init_samples, self.target_sampler, self.DELTA, self.METRIC_EPS, self.EP_PER_UPDATE,
                           wb_max_reuse=1)
         elif self.curriculum.constrained_wasserstein():
-            # init_samples = np.random.uniform(np.array([-9., -9., 18.]), np.array([9., 9., 18.]), size=(self.INIT_CONTEXT_NUM, 3))
-            init_samples = np.random.uniform(init_lb, init_ub, size=(self.INIT_CONTEXT_NUM, 3))
             return ConstrainedCurrOT(bounds, init_samples, self.target_sampler, self.DELTA, self.DELTA_CT,
                                      self.METRIC_EPS, self.EP_PER_UPDATE, wb_max_reuse=1, annealing_target_probability=self.ATP, 
                                      cost_annealing_steps=self.CAS, reward_annealing_steps=self.RAS)
         elif self.curriculum.wasserstein4cost():
-            # init_samples = np.random.uniform(np.array([-9., -9., 18.]), np.array([9., 9., 18.]), size=(self.INIT_CONTEXT_NUM, 3))
-            init_samples = np.random.uniform(init_lb, init_ub, size=(self.INIT_CONTEXT_NUM, 3))
             return CurrOT4Cost(bounds, init_samples, self.target_sampler, self.DELTA_CT, self.METRIC_EPS, self.EP_PER_UPDATE,
                                wb_max_reuse=1)
         else:

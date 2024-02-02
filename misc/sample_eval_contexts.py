@@ -8,6 +8,7 @@ from deep_sprl.experiments.safety_point_mass_1d_experiment import SafetyPointMas
 from deep_sprl.experiments.safety_cartpole_2d_experiment import SafetyCartpole2DExperiment
 from deep_sprl.experiments.safety_door_2d_experiment import SafetyDoor2DExperiment
 from deep_sprl.experiments.safety_maze_3d_experiment import SafetyMaze3DExperiment
+from deep_sprl.experiments.safety_goal_3d_experiment import SafetyGoal3DExperiment
 from pathlib import Path
 
 
@@ -33,11 +34,12 @@ def sample_contexts_hom(bounds, num_per_axis):
 
 def main():
     ##################################
-    num_contexts = 20
+    num_contexts = 15
     eval_context_dir = f"{Path(os.getcwd()).parent}/eval_contexts"
     target_type = "narrow"
     # env = f"safety_door_2d_{target_type}"
-    env = "safety_maze_3d"
+    # env = "safety_maze_3d"
+    env = "safety_goal_3d"
     all_contexts = True
     all_contexts_hom = False
     num_per_axis = 20
@@ -64,6 +66,10 @@ def main():
                                      seed=1, device="cpu")
     elif env == "safety_maze_3d":
         exp = SafetyMaze3DExperiment(base_log_dir="logs", curriculum_name="self_paced", 
+                                     learner_name="PPO", parameters={},
+                                     seed=1, device="cpu")
+    elif env == "safety_goal_3d":
+        exp = SafetyGoal3DExperiment(base_log_dir="logs", curriculum_name="default", 
                                      learner_name="PPO", parameters={},
                                      seed=1, device="cpu")
     else:

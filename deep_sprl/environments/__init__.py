@@ -4,4 +4,5 @@ from .safety_cartpole import contextual_safety_cartpole
 from .safety_point_mass import contextual_safety_point_mass_1d
 from .safety_point_mass import contextual_safety_point_mass_2d
 from .safety_point_mass import contextual_safety_point_mass_3d
-
+from .safety_goal import contextual_goal_level1
+from .safety_goal import contextual_safety_goal_3d

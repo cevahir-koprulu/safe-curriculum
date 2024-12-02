@@ -141,14 +141,51 @@ def plot_results(base_log_dir, num_updates_per_iteration, seeds, env, setting, a
 
 def main():
     base_log_dir = os.path.join(Path(os.getcwd()).parent, "logs")
-    num_updates_per_iteration = 10
-    seeds = [str(i) for i in range(6, 11)]
+    # num_updates_per_iteration = 10
+    # seeds = [str(i) for i in range(6, 11)]
     # env = "safety_door_2d_narrow"
     # figname_extra = "_D=25_DCS=0.0_training_contexts_s6-10"
-    env = "safety_maze_3d"
-    figname_extra = "_DCS=0_training_contexts_s6-10"
+
+    # num_updates_per_iteration = 10
+    # seeds = [str(i) for i in range(6, 11)]
+    # env = "safety_maze_3d"
+    # figname_extra = "_DCS=0_training_contexts_s6-10"
+
+    # num_updates_per_iteration = 10    
+    # seeds = [str(i) for i in range(6, 11)]
     # env = "safety_goal_3d"
     # figname_extra = "_MEPS=0.5_DCS=0_training_contexts_s1-5_new"
+
+    # num_updates_per_iteration = 5
+    # seeds = [str(i) for i in range(1, 4)]
+    # env = "safety_goal_noconflict_3d"
+    # figname_extra = "_DCS=0_training_contexts_s1-3"
+
+    # num_updates_per_iteration = 5
+    # seeds = [str(i) for i in range(1, 4)]
+    # env = "safety_goal_with_vases_3d"
+    # figname_extra = "_DCS=0_training_contexts_s1-3_newinitv3_nn256_b128"
+
+    # num_updates_per_iteration = 5
+    # seeds = [str(i) for i in range(1, 4)]
+    # env = "safety_passage_3d"
+    # figname_extra = "_s1-3"
+
+    # num_updates_per_iteration = 5
+    # seeds = [str(i) for i in range(1, 6)]
+    # env = "safety_passage_push_3d"
+    # figname_extra = "_MEPS=0.25_gs=15_bs=128_s1-5_CAR_InnerWallv6.2_SPI=300"
+
+    # num_updates_per_iteration = 5
+    # seeds = [str(i) for i in range(1, 4)]
+    # env = "safety_ant_3d"
+    # figname_extra = "_GS=10_EPU=120_SHz"
+
+    num_updates_per_iteration = 5
+    seeds = [str(i) for i in range(1, 4)]
+    env = "safety_doggo_3d"
+    figname_extra = "_act=tanh_SMALLv5_h3x256"
+
     # color_type = "return"
     color_type = "cost"
 
@@ -257,6 +294,240 @@ def main():
             #     "cmap": "Purples",
             # },
         },
+        "safety_goal_noconflict_3d": {
+            "SCG_MEPS=0.4": {
+                "algorithm": "constrained_wasserstein",
+                "label": "SCG_MEPS=0.4",
+                "model": "PPOLag_DELTA_CS=0.0_ATP=1.0_CAS=10_DELTA=0.6_DELTA_CT=1.0_METRIC_EPS=0.4_RAS=10",
+                "color": "red",
+                "cmap": "Reds",
+            },
+            "SCG_MEPS=0.3": {
+                "algorithm": "constrained_wasserstein",
+                "label": "SCG_MEPS=0.3",
+                "model": "PPOLag_DELTA_CS=0.0_ATP=1.0_CAS=10_DELTA=0.6_DELTA_CT=1.0_METRIC_EPS=0.3_RAS=10",
+                "color": "green",
+                "cmap": "Greens",
+            },
+            "CRT": {
+                "algorithm": "wasserstein",
+                "label": "CRT",
+                "model": "PPOLag_DELTA_CS=0.0_DELTA=0.6_METRIC_EPS=0.5_PEN_COEFT=0.0",
+                "color": "blue",
+                "cmap": "Blues",
+            },
+        },
+        "safety_passage_3d": {
+            "SCG_MEPS=0.1": {
+                "algorithm": "constrained_wasserstein",
+                "label": "SCG_MEPS=0.1",
+                "model": "PPOLag_DELTA_CS=0.0_ATP=0.75_CAS=10_DELTA=0.6_DELTA_CT=1.0_METRIC_EPS=0.1_RAS=10",
+                "color": "green",
+                "cmap": "Greens",
+            },
+            "SCG_MEPS=0.5": {
+                "algorithm": "constrained_wasserstein",
+                "label": "SCG_MEPS=0.5",
+                "model": "PPOLag_DELTA_CS=0.0_ATP=0.75_CAS=10_DELTA=0.6_DELTA_CT=1.0_METRIC_EPS=0.5_RAS=10",
+                "color": "magenta",
+                "cmap": "Purples",
+            },
+        },
+        "safety_passage_push_3d": {
+            "SCG_D=0.6": {
+                "algorithm": "constrained_wasserstein",
+                "label": "SCG_D=0.6",
+                "model": "PPOLag_DELTA_CS=0.0_ATP=0.75_CAS=10_DELTA=0.6_DELTA_CT=1.0_METRIC_EPS=0.25_RAS=10",
+                "color": "red",
+                "cmap": "Reds",
+            },
+            "SCG_D=0.55": {
+                "algorithm": "constrained_wasserstein",
+                "label": "SCG_D=0.55",
+                "model": "PPOLag_DELTA_CS=0.0_ATP=0.75_CAS=10_DELTA=0.55_DELTA_CT=1.0_METRIC_EPS=0.25_RAS=10",
+                "color": "blue",
+                "cmap": "Blues",
+            },
+            "SCG_D=0.5": {
+                "algorithm": "constrained_wasserstein",
+                "label": "SCG_D=0.5",
+                "model": "PPOLag_DELTA_CS=0.0_ATP=0.75_CAS=10_DELTA=0.5_DELTA_CT=1.0_METRIC_EPS=0.25_RAS=10",
+                "color": "green",
+                "cmap": "Greens",
+            },
+            # "SCG_DCT=1.0": {
+            #     "algorithm": "constrained_wasserstein",
+            #     "label": "SCG_DCT=1.0",
+            #     "model": "PPOLag_DELTA_CS=0.0_ATP=0.75_CAS=10_DELTA=0.6_DELTA_CT=1.0_METRIC_EPS=0.25_RAS=10",
+            #     "color": "red",
+            #     "cmap": "Reds",
+            # },
+            # "SCG_DCT=0.75": {
+            #     "algorithm": "constrained_wasserstein",
+            #     "label": "SCG_DCT=0.75",
+            #     "model": "PPOLag_DELTA_CS=0.0_ATP=0.75_CAS=10_DELTA=0.6_DELTA_CT=0.75_METRIC_EPS=0.25_RAS=10",
+            #     "color": "blue",
+            #     "cmap": "Blues",
+            # },
+            # "SCG_DCT=0.5": {
+            #     "algorithm": "constrained_wasserstein",
+            #     "label": "SCG_DCT=0.5",
+            #     "model": "PPOLag_DELTA_CS=0.0_ATP=0.75_CAS=10_DELTA=0.6_DELTA_CT=0.5_METRIC_EPS=0.25_RAS=10",
+            #     "color": "green",
+            #     "cmap": "Greens",
+            # },
+            # "SCG": {
+            #     "algorithm": "constrained_wasserstein",
+            #     "label": "SCG",
+            #     "model": "PPOLag_DELTA_CS=0.0_ATP=0.75_CAS=10_DELTA=0.6_DELTA_CT=1.0_METRIC_EPS=0.25_RAS=10",
+            #     "color": "red",
+            #     "cmap": "Reds",
+            # },
+            # "NSCRT": {
+            #     "algorithm": "wasserstein",
+            #     "label": "NSCRT",
+            #     "model": "PPOLag_DELTA_CS=0.0_DELTA=0.6_METRIC_EPS=0.25_PEN_COEFT=1.0",
+            #     "color": "blue",
+            #     "cmap": "Blues",
+            # },
+            # "CRT": {
+            #     "algorithm": "wasserstein",
+            #     "label": "CRT",
+            #     "model": "PPOLag_DELTA_CS=0.0_DELTA=0.6_METRIC_EPS=0.25_PEN_COEFT=0.0",
+            #     "color": "green",
+            #     "cmap": "Greens",
+            # },
+            # "CRT4Cost": {
+            #     "algorithm": "wasserstein4cost",
+            #     "label": "CRT4Cost",
+            #     "model": "PPOLag_DELTA_CS=0.0_DELTA_CT=1.0_METRIC_EPS=0.25",
+            #     "color": "magenta",
+            #     "cmap": "Purples",
+            # },
+        },
+        "safety_ant_3d": {
+            "SCG": {
+                "algorithm": "constrained_wasserstein",
+                "label": "SCG",
+                "model": "PPOLag_DELTA_CS=0.0_ATP=0.75_CAS=10_DELTA=0.6_DELTA_CT=1.0_METRIC_EPS=0.25_PP=True_PS=True_RAS=10",
+                "color": "blue",
+                "cmap": "Blues",
+            },
+            "NSCURROT": {
+                "algorithm": "wasserstein",
+                "label": "NSCURROT",
+                "model": "PPOLag_DELTA_CS=0.0_DELTA=0.6_METRIC_EPS=0.25_PEN_COEFT=1.0",
+                "color": "red",
+                "cmap": "Reds",
+            },
+            "CURROT": {
+                "algorithm": "wasserstein",
+                "label": "CURROT",
+                "model": "PPOLag_DELTA_CS=0.0_DELTA=0.6_METRIC_EPS=0.25_PEN_COEFT=0.0",
+                "color": "green",
+                "cmap": "Greens",
+            },     
+            "DEFAULT": {
+                "algorithm": "default",
+                "label": "DEFAULT",
+                "model": "PPOLag_DELTA_CS=0.0",
+                "color": "purple",
+                "cmap": "Purples",
+            },
+        },
+        "safety_doggo_3d": {
+            # "D=0.6": {
+            #     "algorithm": "constrained_wasserstein",
+            #     "label": "D=0.6",
+            #     "model": "PPOLag_DELTA_CS=0.0_ATP=0.75_CAS=10_DELTA=0.6_DELTA_CT=1.0_METRIC_EPS=0.25_PP=True_PS=True_RAS=10",
+            #     "color": "red",
+            #     "cmap": "Reds",
+            # },
+            # "D=0.7": {
+            #     "algorithm": "constrained_wasserstein",
+            #     "label": "D=0.7",
+            #     "model": "PPOLag_DELTA_CS=0.0_ATP=0.75_CAS=10_DELTA=0.7_DELTA_CT=1.0_METRIC_EPS=0.25_PP=True_PS=True_RAS=10",
+            #     "color": "blue",
+            #     "cmap": "Blues",
+            # },
+            # "D=0.7_MEPS=0.1": {
+            #     "algorithm": "constrained_wasserstein",
+            #     "label": "D=0.7_MEPS=0.1",
+            #     "model": "PPOLag_DELTA_CS=0.0_ATP=0.75_CAS=10_DELTA=0.7_DELTA_CT=1.0_METRIC_EPS=0.1_PP=True_PS=True_RAS=10",
+            #     "color": "green",
+            #     "cmap": "Greens",
+            # },
+            # "D=0.8": {
+            #     "algorithm": "constrained_wasserstein",
+            #     "label": "D=0.8",
+            #     "model": "PPOLag_DELTA_CS=0.0_ATP=0.75_CAS=10_DELTA=0.8_DELTA_CT=1.0_METRIC_EPS=0.25_PP=True_PS=True_RAS=10",
+            #     "color": "magenta",
+            #     "cmap": "Purples",
+            # },
+            # "ATP=0.75_DCT=1_D=0.6": {
+            #     "algorithm": "constrained_wasserstein",
+            #     "label": "ATP=0.75_DCT=1_D=0.6",
+            #     "model": "PPOLag_DELTA_CS=0.0_ATP=0.75_CAS=10_DELTA=0.6_DELTA_CT=1.0_METRIC_EPS=0.25_PP=True_PS=True_RAS=10",
+            #     "color": "red",
+            #     "cmap": "Reds",
+            # },
+            # "ATP=0.75_DCT=1_D=0.7": {
+            #     "algorithm": "constrained_wasserstein",
+            #     "label": "ATP=0.75_DCT=1_D=0.7",
+            #     "model": "PPOLag_DELTA_CS=0.0_ATP=0.75_CAS=10_DELTA=0.7_DELTA_CT=1.0_METRIC_EPS=0.25_PP=True_PS=True_RAS=10",
+            #     "color": "blue",
+            #     "cmap": "Blues",
+            # },
+            "D=0.6": {
+                "algorithm": "wasserstein",
+                "label": "NSCURROT",
+                "model": "PPOLag_DELTA_CS=0.0_DELTA=0.6_METRIC_EPS=0.25_PEN_COEFT=1.0",
+                "color": "red",
+                "cmap": "Reds",
+            },
+            "D=0.7": {
+                "algorithm": "wasserstein",
+                "label": "D=0.7",
+                "model": "PPOLag_DELTA_CS=0.0_DELTA=0.7_METRIC_EPS=0.25_PEN_COEFT=1.0",
+                "color": "blue",
+                "cmap": "Blues",
+            },
+            "D=0.5": {
+                "algorithm": "wasserstein",
+                "label": "D=0.5",
+                "model": "PPOLag_DELTA_CS=0.0_DELTA=0.5_METRIC_EPS=0.25_PEN_COEFT=1.0",
+                "color": "green",
+                "cmap": "Greens",
+            },
+            # "SCG": {
+            #     "algorithm": "constrained_wasserstein",
+            #     "label": "SCG",
+            #     "model": "PPOLag_DELTA_CS=0.0_ATP=0.75_CAS=10_DELTA=0.6_DELTA_CT=1.0_METRIC_EPS=0.25_PP=True_PS=True_RAS=10",
+            #     "color": "blue",
+            #     "cmap": "Blues",
+            # },
+            # "NSCURROT": {
+            #     "algorithm": "wasserstein",
+            #     "label": "NSCURROT",
+            #     "model": "PPOLag_DELTA_CS=0.0_DELTA=0.6_METRIC_EPS=0.25_PEN_COEFT=1.0",
+            #     "color": "red",
+            #     "cmap": "Reds",
+            # },
+            # "CURROT": {
+            #     "algorithm": "wasserstein",
+            #     "label": "CURROT",
+            #     "model": "PPOLag_DELTA_CS=0.0_DELTA=0.6_METRIC_EPS=0.25_PEN_COEFT=0.0",
+            #     "color": "green",
+            #     "cmap": "Greens",
+            # },     
+            # "DEFAULT": {
+            #     "algorithm": "default",
+            #     "label": "DEFAULT",
+            #     "model": "PPOLag_DELTA_CS=0.0",
+            #     "color": "purple",
+            #     "cmap": "Purples",
+            # },
+        },    
     }
 
     settings = {
@@ -323,6 +594,126 @@ def main():
                 2: {
                     "ylabel": 'Tolerance',
                     "ylim": [0.25, 1.],
+                },
+            },
+            "return_bounds": [25., 70.],
+            "cost_bounds": [0., 10.],
+        },
+        "safety_goal_noconflict_3d": {
+            "context_dim": 3,
+            "num_iters": 150,
+            "steps_per_iter": 10000,
+            "fontsize": 16,
+            "figsize": (30, 10),
+            "bbox_to_anchor": (.5, 1.05),
+            "subplot_settings": {
+                0: {
+                    "ylabel": 'Goal Position X',
+                    "ylim": [-1.5, 1.5],
+                },
+                1: {
+                    "ylabel": 'Goal Position Y',
+                    "ylim": [-1.5, 1.5],
+                },
+                2: {
+                    "ylabel": 'Tolerance',
+                    "ylim": [0.25, 1.],
+                },
+            },
+            "return_bounds": [25., 70.],
+            "cost_bounds": [0., 10.],
+        },
+        "safety_passage_3d": {
+            "context_dim": 3,
+            "num_iters": 150,
+            "steps_per_iter": 10000,
+            "fontsize": 16,
+            "figsize": (30, 10),
+            "bbox_to_anchor": (.5, 1.05),
+            "subplot_settings": {
+                0: {
+                    "ylabel": 'Goal Position X',
+                    "ylim": [-2, 2],
+                },
+                1: {
+                    "ylabel": 'Goal Position Y',
+                    "ylim": [-1.5, 1.5],
+                },
+                2: {
+                    "ylabel": 'Tolerance',
+                    "ylim": [0.25, 1.],
+                },
+            },
+            "return_bounds": [25., 70.],
+            "cost_bounds": [0., 10.],
+        },
+        "safety_passage_push_3d": {
+            "context_dim": 3,
+            "num_iters": 300,
+            "steps_per_iter": 10000,
+            "fontsize": 16,
+            "figsize": (30, 10),
+            "bbox_to_anchor": (.5, 1.05),
+            "subplot_settings": {
+                0: {
+                    "ylabel": 'Goal Position X',
+                    "ylim": [-2, 2],
+                },
+                1: {
+                    "ylabel": 'Goal Position Y',
+                    "ylim": [-2, 2],
+                },
+                2: {
+                    "ylabel": 'Tolerance',
+                    "ylim": [0.25, .75],
+                },
+            },
+            "return_bounds": [25., 70.],
+            "cost_bounds": [0., 10.],
+        },
+        "safety_ant_3d": {
+            "context_dim": 3,
+            "num_iters": 100,
+            "steps_per_iter": 2500,
+            "fontsize": 16,
+            "figsize": (30, 10),
+            "bbox_to_anchor": (.5, 1.05),
+            "subplot_settings": {
+                0: {
+                    "ylabel": 'Goal Position X',
+                    "ylim": [-1.5, 1.5],
+                },
+                1: {
+                    "ylabel": 'Goal Position Y',
+                    "ylim": [-1.5, 1.5],
+                },
+                2: {
+                    "ylabel": 'Tolerance',
+                    "ylim": [0.25, 1.],
+                },
+            },
+            "return_bounds": [25., 70.],
+            "cost_bounds": [0., 10.],
+        },
+        "safety_doggo_3d": {
+            "context_dim": 3,
+            "num_iters": 100,
+            "steps_per_iter": 20000,
+            "fontsize": 16,
+            "figsize": (30, 10),
+            "bbox_to_anchor": (.5, 1.05),
+            "subplot_settings": {
+                0: {
+                    "ylabel": 'Goal Position X',
+                    "ylim": [-.5, .5],
+                },
+                1: {
+                    "ylabel": 'Goal Position Y',
+                    "ylim": [-.5, .5],
+                },
+                2: {
+                    "ylabel": 'Tolerance',
+                    "ylim": [0.1, .25],
                 },
             },
             "return_bounds": [25., 70.],

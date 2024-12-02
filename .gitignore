@@ -7,7 +7,7 @@ figures*/
 eval_contexts*/
 run_*
 runs*/
-test_runs*/
 *.pdf
 heatmap*
 videos*/
+*test*

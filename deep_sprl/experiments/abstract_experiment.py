@@ -154,6 +154,9 @@ class Learner(Enum):
     PPO = 1
     SAC = 2
     PPOLag = 3
+    CPO = 4
+    FOCOPS = 5
+    PCPO = 6
 
     def __str__(self):
         if self.ppo():
@@ -162,6 +165,12 @@ class Learner(Enum):
             return "SAC"
         elif self.ppolag():
             return "PPOLag"
+        elif self.cpo():
+            return "CPO"
+        elif self.focops():
+            return "FOCOPS"
+        elif self.pcpo():
+            return "PCPO"
         else:
             return "Invalid"
 
@@ -173,9 +182,18 @@ class Learner(Enum):
     
     def ppolag(self):
         return self.value == Learner.PPOLag.value
+
+    def cpo(self):
+        return self.value == Learner.CPO.value
     
+    def focops(self):
+        return self.value == Learner.FOCOPS.value
+    
+    def pcpo(self):
+        return self.value == Learner.PCPO.value
+
     def is_constrained(self):
-        return self.ppolag()
+        return self.ppolag() or self.cpo() or self.focops() or self.pcpo()
     
     def create_learner(self, env_id, custom_cfgs, wrapper_kwargs=None):
         model = omnisafe.Agent(str(self), env_id, custom_cfgs=custom_cfgs)
@@ -225,6 +243,12 @@ class Learner(Enum):
             return Learner.SAC
         elif string == str(Learner.PPOLag):
             return Learner.PPOLag
+        elif string == str(Learner.CPO):
+            return Learner.CPO
+        elif string == str(Learner.FOCOPS):
+            return Learner.FOCOPS
+        elif string == str(Learner.PCPO):
+            return Learner.PCPO
         else:
             raise RuntimeError("Invalid string: '" + string + "'")
 
@@ -243,7 +267,7 @@ class AbstractExperiment(ABC):
                      CurriculumType.ConstrainedSelfPaced: ["DELTA_CT", "DELTA", 
                                                           "KL_EPS", "DIST_TYPE", "INIT_VAR"],
                     CurriculumType.ConstrainedWasserstein: ["DELTA_CT", "DELTA", "METRIC_EPS",
-                                                            "ATP", "CAS", "RAS"],
+                                                            "ATP", "CAS", "RAS", "PS", "PP"],
                     CurriculumType.Wasserstein4Cost: ["DELTA_CT", "METRIC_EPS",],
                                                           }
 
@@ -299,7 +323,7 @@ class AbstractExperiment(ABC):
                              "EP_PER_UPDATE": int, "INIT_VAR":float, 
                              "DELTA_CS": float, "DELTA_CT": float, ""
                              "METRIC_EPS": float, "ATP": float, "CAS": int, "RAS": int,
-                             "PEN_COEFS": float, "PEN_COEFT": float,
+                             "PS": bool, "PP": bool, "PEN_COEFS": float, "PEN_COEFT": float,
         }
         for key in sorted(self.parameters.keys()):
             if key not in allowed_overrides:
@@ -307,8 +331,11 @@ class AbstractExperiment(ABC):
 
             value = self.parameters[key]
             tmp = getattr(self, key)
+            print(f"Setting {key} to {value}")
             if isinstance(tmp, dict):
                 tmp[self.learner] = allowed_overrides[key](value)
+            if isinstance(tmp, bool):
+                setattr(self, key, value == "True")
             else:
                 setattr(self, key, allowed_overrides[key](value))
 
@@ -373,6 +400,12 @@ class AbstractExperiment(ABC):
             0: "performance",
             1: "performance_hom",
         }
+        # For evaluation type-1, only use the last iteration
+        if eval_type == 1:
+            # print(sorted_iteration_dirs)
+            sorted_iteration_dirs = [sorted_iteration_dirs[-1]]
+            sorted_model_dirs = [sorted_model_dirs[-1]]
+
         for iteration_dir, saved_model in zip(sorted_iteration_dirs, sorted_model_dirs):
             print(f"Evaluating {iteration_dir} (eval_type={eval_type})")
             iteration_log_dir = os.path.join(log_dir, iteration_dir)

@@ -31,6 +31,9 @@ class GoalGAN(AbstractTeacher):
         self.goid_lb = goid_lb
         self.goid_ub = goid_ub
 
+        self.mins = mins
+        self.maxs = maxs
+        
         ##For testing
         self.context2show = []
 
@@ -68,7 +71,7 @@ class GoalGAN(AbstractTeacher):
         else:
             context = self.context_queue.get()
             self.context2show.append(context.copy())
-
+        context = np.clip(context, self.mins, self.maxs)
         return context
 
     def update(self, context, success):

@@ -8,30 +8,6 @@ from safety_gymnasium.bases.base_task import BaseTask
 from safety_gymnasium.builder import Builder
 from safety_gymnasium.utils.task_utils import get_task_class_name
         
-
-# HAZARD_LOCATIONS = []
-# HAZARD_SIZE = 0.25
-# for x in range(3):
-#     pos_x = -1.5 + HAZARD_SIZE*x
-#     for j in range(7):
-#         pos_y = 0.5 - HAZARD_SIZE*j
-#         HAZARD_LOCATIONS.append((pos_x, pos_y))
-# PILLAR_LOCATIONS = []
-# PILLAR_SIZE = 0.5
-# for x in range(2):
-#     pos_x = -0.5 + 2*PILLAR_SIZE*x
-#     for j in range(2):
-#         pos_y = 0.5 - 2*PILLAR_SIZE*j
-#         PILLAR_LOCATIONS.append((pos_x, pos_y))
-# for j in range(4):
-#     pos_y = 1.5 - 2*PILLAR_SIZE*j
-#     PILLAR_LOCATIONS.append((-2.25, pos_y))
-#     PILLAR_LOCATIONS.append((2.25, pos_y))
-# for i in range(5):
-#     pos_x = -2.0 + 2*PILLAR_SIZE*i
-#     PILLAR_LOCATIONS.append((pos_x, 2.5))
-#     PILLAR_LOCATIONS.append((pos_x, -2.5))
-
 HAZARD_LOCATIONS = []
 HAZARD_SIZE = 0.25
 for x in range(5):

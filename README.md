@@ -50,9 +50,10 @@ Under *misc* directory, you can the scripts to obtain figures in the paper:
 1) *plot_progression_of_results.py*: We use this script to plot the progression of reward, success, cost, regret during training and in contexts from target context distributions.
 2) *plot_final_stats.py*: We run this script to obtain a box plots for expected success, discounted cumulative reward and cost, as well as regret, obtained at the final curriculum iteration.
 3) *plot_safety_maze_curriculum_progression.py*: We run this script to obtain a curriculum evolution figure in safety-maze.
-4) *plot_safety_door_curriculum_progression.py*: We run this script to obtain a curriculum evolution figure in safety-door.
-5) *plot_safety_goal_curriculum_progression.py*: We run this script to obtain a curriculum evolution figure in safety-goal.
-6) *sample_eval_contexts.py*: We run this script to draw contexts from the target context distributions and record them to be used for evaluation of trained policies.
+4) *plot_safety_goal_curriculum_progression.py*: We run this script to obtain a curriculum evolution figure in safety-goal.
+5) *plot_safety_passage_curriculum_progression.py*: We run this script to obtain a curriculum evolution figure in safety-passage.
+6) *plot_safety_passage_push_curriculum_progression.py*: We run this script to obtain a curriculum evolution figure in safety-push.
+7) *sample_eval_contexts.py*: We run this script to draw contexts from the target context distributions and record them to be used for evaluation of trained policies.
 
 
 

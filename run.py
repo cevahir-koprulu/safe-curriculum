@@ -12,16 +12,21 @@ def main():
                                  "constrained_self_paced", "self_paced", 
                                  "wasserstein", "constrained_wasserstein",  "wasserstein4cost",
                                  "alp_gmm", "goal_gan", "acl", "plr", "vds"])
-    parser.add_argument("--learner", type=str, default="PPO", choices=["PPO", "SAC", "PPOLag"])
+    parser.add_argument("--learner", type=str, default="PPOLag", 
+                        choices=["PPO", "SAC", "PPOLag", "CPO", "FOCOPS", "PCPO"])
     parser.add_argument("--env", type=str, default="safety_door_2d",
                         choices=["safety_point_mass_1d", "safety_point_mass_2d", "safety_cartpole_2d",
-                                 "safety_door_2d", "safety_maze_3d", "safety_goal_3d"])
+                                 "safety_door_2d", "safety_maze_3d", 
+                                 "safety_goal_3d", "safety_goal_noconflict_3d", "safety_goal_with_vases_3d",
+                                 "safety_passage_3d", "safety_passage_push_3d",
+                                 "safety_push_box_3d", "safety_push_4d", "safety_push_3d", "safety_reach_3d",
+                                 "safety_ant_3d", "safety_doggo_3d"])
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--n_cores", type=int, default=1)
     parser.add_argument('--train', action='store_true')
     parser.add_argument('--eval', action='store_true')
     parser.add_argument("--eval_type", type=int, default=0, choices=[0, 1],
-                        help="0: target distribution, 1: all contexts")
+                        help="0: target distribution, 1: target distribution but homogeneous")
     parser.add_argument('--eval_training', action='store_true')
     parser.add_argument("--device", type=str, default="cuda:0")
 
@@ -51,6 +56,36 @@ def main():
     elif args.env == "safety_goal_3d":
         from deep_sprl.experiments import SafetyGoal3DExperiment
         exp = SafetyGoal3DExperiment(args.base_log_dir, args.type, args.learner, parameters, args.seed, args.device)
+    elif args.env == "safety_goal_noconflict_3d":
+        from deep_sprl.experiments import SafetyGoalNoConflict3DExperiment
+        exp = SafetyGoalNoConflict3DExperiment(args.base_log_dir, args.type, args.learner, parameters, args.seed, args.device)
+    elif args.env == "safety_goal_with_vases_3d":
+        from deep_sprl.experiments import SafetyGoalWithVases3DExperiment
+        exp = SafetyGoalWithVases3DExperiment(args.base_log_dir, args.type, args.learner, parameters, args.seed, args.device)
+    elif args.env == "safety_passage_3d":
+        from deep_sprl.experiments import SafetyPassage3DExperiment
+        exp = SafetyPassage3DExperiment(args.base_log_dir, args.type, args.learner, parameters, args.seed, args.device)
+    elif args.env == "safety_passage_push_3d":
+        from deep_sprl.experiments import SafetyPassagePush3DExperiment
+        exp = SafetyPassagePush3DExperiment(args.base_log_dir, args.type, args.learner, parameters, args.seed, args.device)
+    elif args.env == "safety_push_box_3d":
+        from deep_sprl.experiments import SafetyPushBox3DExperiment
+        exp = SafetyPushBox3DExperiment(args.base_log_dir, args.type, args.learner, parameters, args.seed, args.device)
+    elif args.env == "safety_push_4d":
+        from deep_sprl.experiments import SafetyPush4DExperiment
+        exp = SafetyPush4DExperiment(args.base_log_dir, args.type, args.learner, parameters, args.seed, args.device)
+    elif args.env == "safety_push_3d":
+        from deep_sprl.experiments import SafetyPush3DExperiment
+        exp = SafetyPush3DExperiment(args.base_log_dir, args.type, args.learner, parameters, args.seed, args.device)
+    elif args.env == "safety_reach_3d":
+        from deep_sprl.experiments import SafetyReach3DExperiment
+        exp = SafetyReach3DExperiment(args.base_log_dir, args.type, args.learner, parameters, args.seed, args.device)
+    elif args.env == "safety_ant_3d":
+        from deep_sprl.experiments import SafetyAnt3DExperiment
+        exp = SafetyAnt3DExperiment(args.base_log_dir, args.type, args.learner, parameters, args.seed, args.device)
+    elif args.env == "safety_doggo_3d":
+        from deep_sprl.experiments import SafetyDoggo3DExperiment
+        exp = SafetyDoggo3DExperiment(args.base_log_dir, args.type, args.learner, parameters, args.seed, args.device)   
     else:
         raise RuntimeError("Unknown environment '%s'!" % args.env)
 

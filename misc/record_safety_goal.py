@@ -28,6 +28,7 @@ def rollout_policy(policy, env):
         with torch.no_grad():
             action = policy(obs)
         obs, reward, cost, terminated, truncated, info = env.step(action)
+        input(obs.shape)
         rendered_obs = env.render()
         rendereds.append(rendered_obs)
         rewards.append(reward.detach().numpy())

@@ -85,6 +85,8 @@ class SafetyGoal3DExperiment(AbstractExperiment):
     ATP = 1.0 # 0.75 # annealing target probability for CCURROT
     CAS = 10 # number of cost annealing steps for CCURROT
     RAS = 10 # number of reward annealing steps for CCURROT
+    PS = True # prioritize safety
+    PP = True # prioritize performance
     
     NUM_ITER = 150 # 300
     STEPS_PER_ITER = 10000
@@ -403,7 +405,8 @@ class SafetyGoal3DExperiment(AbstractExperiment):
             init_samples = np.random.uniform(init_lb, init_ub, size=(self.INIT_CONTEXT_NUM, 3))
             return ConstrainedCurrOT(bounds, init_samples, self.target_sampler, self.DELTA, self.DELTA_CT,
                                      self.METRIC_EPS, self.EP_PER_UPDATE, wb_max_reuse=1, annealing_target_probability=self.ATP, 
-                                     cost_annealing_steps=self.CAS, reward_annealing_steps=self.RAS)
+                                     cost_annealing_steps=self.CAS, reward_annealing_steps=self.RAS,
+                                     prioritize_safety=self.PS, prioritize_performance=self.PP)
         elif self.curriculum.wasserstein4cost():
             init_samples = np.random.uniform(init_lb, init_ub, size=(self.INIT_CONTEXT_NUM, 3))
             return CurrOT4Cost(bounds, init_samples, self.target_sampler, self.DELTA_CT, self.METRIC_EPS, self.EP_PER_UPDATE,

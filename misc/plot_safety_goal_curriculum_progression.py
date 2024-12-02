@@ -82,8 +82,15 @@ def plot_curriculum_progression(base_log_dir, seeds, algorithm, iterations, fign
             print(np_frame.shape)
             ax.imshow(np_frame, extent=(-2.25, 2.25, -2.75, 2.25))
             # print(contexts_all)
+            contexts_all = contexts_all[contexts_all[:, 2].argsort()[::-1]]
             scat = ax.scatter(contexts_all[:, 0], contexts_all[:, 1], alpha=0.3,
-                            c=mapper.to_rgba(contexts_all[:, 2]), s=2)
+                            c=mapper.to_rgba(contexts_all[:, 2]), 
+                            # s=2,
+                            s=0
+                            )
+            for context in contexts_all:
+                xi, yi, rad = context
+                ax.add_patch(plt.Circle((xi, yi), rad*2, color=mapper.to_rgba(rad), alpha=0.3))
 
             ax.set_xlim(-2.25,  2.25)
             ax.set_ylim(-2.75,  2.25)
@@ -106,56 +113,57 @@ def main():
     base_log_dir = os.path.join(Path(os.getcwd()).parent, "logs")
     # iterations = [5, 30, 100, 450]
     iterations = [5, 20, 50, 120]
-    seeds = [str(i) for i in range(1, 6)]
-    figname_extra = ""
+    # seeds = [str(i) for i in range(1, 6)]
+    seeds = ["1"]
+    figname_extra = "_s1"
     if not os.path.exists(os.path.join(Path(os.getcwd()).parent, "figures")):
         os.makedirs(os.path.join(Path(os.getcwd()).parent, "figures"))
     algorithm = [
-        {
-            "algorithm": "default",
-            "label": "DEFAULT",
-            "model": "PPOLag_DELTA_CS=0.0",
-        },
+        # {
+        #     "algorithm": "default",
+        #     "label": "DEFAULT",
+        #     "model": "PPOLag_DELTA_CS=0.0",
+        # },
         {
             "algorithm": "constrained_wasserstein",
             "label": "SCG",
-            "model": "PPOLag_DELTA_CS=0.0_ATP=1.0_CAS=10_DELTA=0.6_DELTA_CT=1.0_METRIC_EPS=0.5_RAS=10",
+            "model": "PPOLag_DELTA_CS=0.0_ATP=1.0_CAS=10_DELTA=0.6_DELTA_CT=1.0_METRIC_EPS=0.5_PP=True_PS=True_RAS=10",
         },
-        {
-            "algorithm": "wasserstein",
-            "label": "NaiveSafeCURROT",
-            "model": "PPOLag_DELTA_CS=0.0_DELTA=0.6_METRIC_EPS=0.5_PEN_COEFT=1.0",
-        },
+        # {
+        #     "algorithm": "wasserstein",
+        #     "label": "NaiveSafeCURROT",
+        #     "model": "PPOLag_DELTA_CS=0.0_DELTA=0.6_METRIC_EPS=0.5_PEN_COEFT=1.0",
+        # },
         {
             "algorithm": "wasserstein",
             "label": "CURROT",
             "model": "PPOLag_DELTA_CS=0.0_DELTA=0.6_METRIC_EPS=0.5_PEN_COEFT=0.0",
         },
-        {
-            "algorithm": "wasserstein4cost",
-            "label": "CURROT4Cost",
-            "model": "PPOLag_DELTA_CS=0.0_DELTA_CT=1.0_METRIC_EPS=0.5",
-        },
-        {
-            "algorithm": "alp_gmm",
-            "label": "ALP-GMM",
-            "model": "PPOLag_DELTA_CS=0.0_AG_FIT_RATE=200_AG_MAX_SIZE=500_AG_P_RAND=0.2",
-        },
-        {
-            "algorithm": "plr",
-            "label": "PLR",
-            "model": "PPOLag_DELTA_CS=0.0_PLR_BETA=0.15_PLR_REPLAY_RATE=0.55_PLR_RHO=0.45",
-        },
-        {
-            "algorithm": "self_paced",
-            "label": "SPDL",
-            "model": "PPOLag_DELTA_CS=0.0_DELTA=0.6_DIST_TYPE=gaussian_INIT_VAR=0.0_KL_EPS=0.25_PEN_COEFT=0.0",
-        },
-        {
-            "algorithm": "goal_gan",
-            "label": "GoalGAN",
-            "model": "PPOLag_DELTA_CS=0.0_GG_FIT_RATE=200_GG_NOISE_LEVEL=0.1_GG_P_OLD=0.2",
-        },
+        # {
+        #     "algorithm": "wasserstein4cost",
+        #     "label": "CURROT4Cost",
+        #     "model": "PPOLag_DELTA_CS=0.0_DELTA_CT=1.0_METRIC_EPS=0.5",
+        # },
+        # {
+        #     "algorithm": "alp_gmm",
+        #     "label": "ALP-GMM",
+        #     "model": "PPOLag_DELTA_CS=0.0_AG_FIT_RATE=200_AG_MAX_SIZE=500_AG_P_RAND=0.2",
+        # },
+        # {
+        #     "algorithm": "plr",
+        #     "label": "PLR",
+        #     "model": "PPOLag_DELTA_CS=0.0_PLR_BETA=0.15_PLR_REPLAY_RATE=0.55_PLR_RHO=0.45",
+        # },
+        # {
+        #     "algorithm": "self_paced",
+        #     "label": "SPDL",
+        #     "model": "PPOLag_DELTA_CS=0.0_DELTA=0.6_DIST_TYPE=gaussian_INIT_VAR=0.0_KL_EPS=0.25_PEN_COEFT=0.0",
+        # },
+        # {
+        #     "algorithm": "goal_gan",
+        #     "label": "GoalGAN",
+        #     "model": "PPOLag_DELTA_CS=0.0_GG_FIT_RATE=200_GG_NOISE_LEVEL=0.1_GG_P_OLD=0.2",
+        # },
     ]
 
     plot_curriculum_progression(

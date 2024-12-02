@@ -15,7 +15,8 @@ class ConstrainedCurrOT(AbstractTeacher):
 
     def __init__(self, context_bounds, init_samples, target_sampler, perf_lb, cost_ub, epsilon, episodes_per_update,
                  callback=None, model_r=None, model_c=None, wait_until_threshold=False, wb_max_reuse=1, 
-                 annealing_target_probability=0.75, cost_annealing_steps=10, reward_annealing_steps=10):
+                 annealing_target_probability=0.75, cost_annealing_steps=10, reward_annealing_steps=10,
+                 prioritize_safety=True, prioritize_performance=False):
         if model_r is None:
             self.model_r = RewardEstimatorGP()
         else:
@@ -32,7 +33,8 @@ class ConstrainedCurrOT(AbstractTeacher):
         self.teacher = ConstrainedWassersteinInterpolation(init_samples, target_sampler, perf_lb, cost_ub, epsilon, callback=callback)
         self.success_buffer = WassersteinConstrainedSuccessBuffer(perf_lb, cost_ub, init_samples.shape[0], episodes_per_update, epsilon,
                                                        context_bounds=context_bounds, max_reuse=wb_max_reuse, annealing_target_probability=annealing_target_probability,
-                                                       cost_annealing_steps=cost_annealing_steps, reward_annealing_steps=reward_annealing_steps,)
+                                                       cost_annealing_steps=cost_annealing_steps, reward_annealing_steps=reward_annealing_steps,
+                                                       prioritize_safety=prioritize_safety, prioritize_performance=prioritize_performance)
         self.fail_context_buffer = []
         self.fail_return_buffer = []
         self.fail_cost_buffer = []
@@ -111,7 +113,8 @@ class ConstrainedCurrOT(AbstractTeacher):
 class AbstractConstrainedSuccessBuffer(ABC):
 
     def __init__(self, delta: float, delta_c: float, n: int, epsilon: float, context_bounds: Tuple[np.ndarray, np.ndarray],
-                 annealing_target_probability: float, cost_annealing_steps: int, reward_annealing_steps: int):
+                 annealing_target_probability: float, cost_annealing_steps: int, reward_annealing_steps: int,
+                 prioritize_safety: bool, prioritize_performance: bool):
         context_exts = context_bounds[1] - context_bounds[0]
         self.delta_stds = context_exts / 4
         self.min_stds = 0.005 * epsilon * np.ones(len(context_bounds[0]))
@@ -122,11 +125,13 @@ class AbstractConstrainedSuccessBuffer(ABC):
         self.annealing_target_probability = annealing_target_probability
         self.cost_annealing_steps = cost_annealing_steps
         self.reward_annealing_steps = reward_annealing_steps
+        self.prioritize_safety = prioritize_safety
+        self.prioritize_performance = prioritize_performance
         self.contexts = np.zeros((1, len(context_bounds[0])))
         self.returns = np.array([-np.inf])
         self.costs = np.array([np.inf])
-        self.delta_reached = False
-        self.delta_c_reached = False
+        self.delta_reached = False or not prioritize_performance
+        self.delta_c_reached = False or not prioritize_safety
         self.min_ret = np.inf # None
         self.max_cost = -np.inf # None
         self.num_updates_in_cost_annealing = 0
@@ -161,10 +166,10 @@ class AbstractConstrainedSuccessBuffer(ABC):
         self.min_ret = min(np.min(returns), self.min_ret)
         self.max_cost = max(np.max(costs), self.max_cost) + 1e-4
 
-        if not self.delta_c_reached:
+        if not self.delta_c_reached and self.prioritize_safety:
             self.delta_c_reached, self.contexts, self.returns, self.costs, mask = self.update_delta_c_not_reached(
                 contexts, returns, costs, current_samples)
-        elif not self.delta_reached:
+        elif not self.delta_reached and self.prioritize_performance:
             self.delta_reached, self.contexts, self.returns, self.costs, mask = self.update_delta_not_reached(
                 contexts, returns, costs, current_samples)
         else:
@@ -306,9 +311,10 @@ class WassersteinConstrainedSuccessBuffer(AbstractConstrainedSuccessBuffer):
 
     def __init__(self, delta: float, delta_c: float, n: int, ep_per_update: int, epsilon: float,
                  context_bounds: Tuple[np.ndarray, np.ndarray], max_reuse=3, annealing_target_probability=0.75,
-                 cost_annealing_steps=10, reward_annealing_steps=10):
+                 cost_annealing_steps=10, reward_annealing_steps=10, prioritize_safety=True, prioritize_performance=False):
         super().__init__(delta, delta_c, n, epsilon, context_bounds, 
-                         annealing_target_probability, cost_annealing_steps, reward_annealing_steps)
+                         annealing_target_probability, cost_annealing_steps, reward_annealing_steps,
+                         prioritize_safety, prioritize_performance)
         self.max_reuse = max_reuse
         self.ep_per_update = ep_per_update
         self.solver = AssignmentSolver(ep_per_update, n, max_reuse=self.max_reuse, verbose=False)

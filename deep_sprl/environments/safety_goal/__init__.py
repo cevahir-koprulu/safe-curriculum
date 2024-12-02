@@ -1,1 +1,2 @@
 from .contextual_safety_goal_3d import ContextualSafetyGoal3D
+from .contextual_safety_goal_noconflict_3d import ContextualSafetyGoalNoConflict3D

@@ -57,6 +57,7 @@ class SelfPacedWrapper(BaseWrapper):
                                    use_undiscounted_reward, reward_from_info, cost_from_info,
                                    eval_mode, penalty_coeff_s, penalty_coeff_t, wait_until_policy_update)
         self.context_buffer = Buffer(3, episodes_per_update + 1, True)
+        self.num_curriculum_updates = 0
 
     def done_callback(self, step, cur_initial_state, cur_context, discounted_reward, undiscounted_reward,
                       discounted_cost, undiscounted_cost):
@@ -72,11 +73,19 @@ class SelfPacedWrapper(BaseWrapper):
                         self.algorithm_iteration-self.step_length) % self.step_divider):
                 __, contexts, returns = self.context_buffer.read_buffer()
                 self.teacher.update_distribution(np.array(contexts), np.array(returns))
+                self.num_curriculum_updates += 1
+                print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+                print(f"Curriculum update {self.num_curriculum_updates} at iteration {self.algorithm_iteration}")
+                print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
         else:
             if len(self.context_buffer) >= self.episodes_per_update:
                 __, contexts, returns = self.context_buffer.read_buffer()
                 self.teacher.update_distribution(np.array(contexts), np.array(returns))
-
+                self.num_curriculum_updates += 1
+                print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+                print(f"Curriculum update {self.num_curriculum_updates} at iteration {self.algorithm_iteration}")
+                print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+                
     def get_context_buffer(self):
         ins, cons, disc_rews = self.context_buffer.read_buffer()
         return np.array(ins), np.array(cons), np.array(disc_rews)

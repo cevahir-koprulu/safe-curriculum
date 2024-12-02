@@ -101,6 +101,7 @@ class PLR(AbstractTeacher):
             return self.sample_prioritized()
 
     def post_process(self, task):
+        print(f"Post processing task {task}")
         if self.sample_from_buffer:
             return self.contexts[task]
         else:

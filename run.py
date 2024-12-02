@@ -15,12 +15,8 @@ def main():
     parser.add_argument("--learner", type=str, default="PPOLag", 
                         choices=["PPO", "SAC", "PPOLag", "CPO", "FOCOPS", "PCPO"])
     parser.add_argument("--env", type=str, default="safety_door_2d",
-                        choices=["safety_point_mass_1d", "safety_point_mass_2d", "safety_cartpole_2d",
-                                 "safety_door_2d", "safety_maze_3d", 
-                                 "safety_goal_3d", "safety_goal_noconflict_3d", "safety_goal_with_vases_3d",
-                                 "safety_passage_3d", "safety_passage_push_3d",
-                                 "safety_push_box_3d", "safety_push_4d", "safety_push_3d", "safety_reach_3d",
-                                 "safety_ant_3d", "safety_doggo_3d"])
+                        choices=["safety_maze_3d", "safety_goal_3d", "safety_goal_noconflict_3d",
+                                 "safety_passage_3d", "safety_passage_push_3d", "safety_doggo_3d"])
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--n_cores", type=int, default=1)
     parser.add_argument('--train', action='store_true')
@@ -38,19 +34,7 @@ def main():
     if args.device != "cpu" and not torch.cuda.is_available():
         args.device = "cpu"
 
-    if args.env == "safety_point_mass_2d":
-        from deep_sprl.experiments import SafetyPointMass2DExperiment
-        exp = SafetyPointMass2DExperiment(args.base_log_dir, args.type, args.learner, parameters, args.seed, args.device)
-    elif args.env == "safety_point_mass_1d":
-        from deep_sprl.experiments import SafetyPointMass1DExperiment
-        exp = SafetyPointMass1DExperiment(args.base_log_dir, args.type, args.learner, parameters, args.seed, args.device)
-    elif args.env == "safety_cartpole_2d":
-        from deep_sprl.experiments import SafetyCartpole2DExperiment
-        exp = SafetyCartpole2DExperiment(args.base_log_dir, args.type, args.learner, parameters, args.seed, args.device)
-    elif args.env == "safety_door_2d":
-        from deep_sprl.experiments import SafetyDoor2DExperiment
-        exp = SafetyDoor2DExperiment(args.base_log_dir, args.type, args.learner, parameters, args.seed, args.device)
-    elif args.env == "safety_maze_3d":
+    if args.env == "safety_maze_3d":
         from deep_sprl.experiments import SafetyMaze3DExperiment
         exp = SafetyMaze3DExperiment(args.base_log_dir, args.type, args.learner, parameters, args.seed, args.device)
     elif args.env == "safety_goal_3d":
@@ -59,30 +43,12 @@ def main():
     elif args.env == "safety_goal_noconflict_3d":
         from deep_sprl.experiments import SafetyGoalNoConflict3DExperiment
         exp = SafetyGoalNoConflict3DExperiment(args.base_log_dir, args.type, args.learner, parameters, args.seed, args.device)
-    elif args.env == "safety_goal_with_vases_3d":
-        from deep_sprl.experiments import SafetyGoalWithVases3DExperiment
-        exp = SafetyGoalWithVases3DExperiment(args.base_log_dir, args.type, args.learner, parameters, args.seed, args.device)
     elif args.env == "safety_passage_3d":
         from deep_sprl.experiments import SafetyPassage3DExperiment
         exp = SafetyPassage3DExperiment(args.base_log_dir, args.type, args.learner, parameters, args.seed, args.device)
     elif args.env == "safety_passage_push_3d":
         from deep_sprl.experiments import SafetyPassagePush3DExperiment
         exp = SafetyPassagePush3DExperiment(args.base_log_dir, args.type, args.learner, parameters, args.seed, args.device)
-    elif args.env == "safety_push_box_3d":
-        from deep_sprl.experiments import SafetyPushBox3DExperiment
-        exp = SafetyPushBox3DExperiment(args.base_log_dir, args.type, args.learner, parameters, args.seed, args.device)
-    elif args.env == "safety_push_4d":
-        from deep_sprl.experiments import SafetyPush4DExperiment
-        exp = SafetyPush4DExperiment(args.base_log_dir, args.type, args.learner, parameters, args.seed, args.device)
-    elif args.env == "safety_push_3d":
-        from deep_sprl.experiments import SafetyPush3DExperiment
-        exp = SafetyPush3DExperiment(args.base_log_dir, args.type, args.learner, parameters, args.seed, args.device)
-    elif args.env == "safety_reach_3d":
-        from deep_sprl.experiments import SafetyReach3DExperiment
-        exp = SafetyReach3DExperiment(args.base_log_dir, args.type, args.learner, parameters, args.seed, args.device)
-    elif args.env == "safety_ant_3d":
-        from deep_sprl.experiments import SafetyAnt3DExperiment
-        exp = SafetyAnt3DExperiment(args.base_log_dir, args.type, args.learner, parameters, args.seed, args.device)
     elif args.env == "safety_doggo_3d":
         from deep_sprl.experiments import SafetyDoggo3DExperiment
         exp = SafetyDoggo3DExperiment(args.base_log_dir, args.type, args.learner, parameters, args.seed, args.device)   

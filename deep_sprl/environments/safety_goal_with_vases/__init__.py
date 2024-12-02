@@ -1,1 +1,0 @@
-from .contextual_safety_goal_with_vases_3d import ContextualSafetyGoalWithVases3D

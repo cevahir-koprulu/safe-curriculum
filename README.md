@@ -1,4 +1,4 @@
-# Safe Curriculum Generation for Constrained RL
+# Safety-Prioritizing Curricula for Constrained Reinforcement Learning
 
 Codebase for ICLR 2025 paper [_Safety-Prioritizing Curricula for Constrained Reinforcement Learning_](https://openreview.net/forum?id=f3QR9TEERH&referrer=%5Bthe%20profile%20of%20Cevahir%20Koprulu%5D(%2Fprofile%3Fid%3D~Cevahir_Koprulu1)) by Cevahir Koprulu, Thiago D. Simão, Nils Jansen, and Ufuk Topcu.
 

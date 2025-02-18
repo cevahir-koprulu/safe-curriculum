@@ -6,4 +6,8 @@ opt_errors*/
 figures*/
 eval_contexts*/
 run_*
+runs*/
 *.pdf
+heatmap*
+videos*/
+*test*

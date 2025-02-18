@@ -1,33 +1,6 @@
-from gym.envs.registration import register
-
-register(
-    id='ContextualPointMass2D-v1',
-    max_episode_steps=200,
-    entry_point='deep_sprl.environments.point_mass.contextual_point_mass_2d:ContextualPointMass2D'
-)
-
-register(
-    id='ContextualSafetyPointMass2D-v1',
-    max_episode_steps=200,
-    entry_point='deep_sprl.environments.safety_point_mass.contextual_safety_point_mass_2d:ContextualSafetyPointMass2D'
-)
-
-register(
-    id='ContextualSafetyPointMass2D2-v1',
-    max_episode_steps=400,
-    entry_point='deep_sprl.environments.safety_point_mass.contextual_safety_point_mass_2d_2:ContextualSafetyPointMass2D2'
-)
-
-register(
-    id='ContextualLunarLander-v1',
-    max_episode_steps=1000,
-    reward_threshold=200,
-    entry_point='deep_sprl.environments.lunar_lander.contextual_lunar_lander:ContextualLunarLander'
-)
-
-register(
-    id='ContextualLunarLander2D-v1',
-    max_episode_steps=1000,
-    reward_threshold=200,
-    entry_point='deep_sprl.environments.lunar_lander.contextual_lunar_lander_2d:ContextualLunarLander2D'
-)
+from .safety_maze import contextual_safety_maze_3d
+from .safety_goal import contextual_goal_level1
+from .safety_goal import contextual_safety_goal_3d
+from .safety_goal import contextual_safety_goal_noconflict_3d
+from .safety_passage import contextual_safety_passage_3d
+from .safety_passage_push import contextual_safety_passage_push_3d

@@ -1,13 +1,16 @@
 # Do this import to ensure that the Gym environments get registered properly
 import deep_sprl.environments
-from. safety_point_mass_2d_experiment import SafetyPointMass2DExperiment
-from .safety_point_mass_2d_2_experiment import SafetyPointMass2D2Experiment
-from .point_mass_2d_experiment import PointMass2DExperiment
-from .point_mass_2d_heavytailed_experiment import PointMass2DHeavyTailedExperiment
-from .lunar_lander_2d_heavytailed_experiment import LunarLander2DHeavyTailedExperiment
+from .safety_maze_3d_experiment import SafetyMaze3DExperiment
+from .safety_goal_3d_experiment import SafetyGoal3DExperiment
+from .safety_goal_noconflict_3d_experiment import SafetyGoalNoConflict3DExperiment
+from .safety_passage_3d_experiment import SafetyPassage3DExperiment
+from .safety_passage_push_3d_experiment import SafetyPassagePush3DExperiment
 from .abstract_experiment import CurriculumType, Learner
 
-__all__ = ['CurriculumType', 'PointMass2DExperiment', 'Learner',
-           'PointMass2DHeavyTailedExperiment', 'LunarLander2DHeavyTailedExperiment',
-           'SafetyPointMass2DExperiment', 'SafetyPointMass2D2Experiment',
+__all__ = ['CurriculumType', 'Learner',
+           'SafetyMaze3DExperiment',
+           'SafetyGoal3DExperiment',
+           'SafetyGoalNoConflict3DExperiment',
+           'SafetyPassage3DExperiment',
+           'SafetyPassagePush3DExperiment',
            ] 

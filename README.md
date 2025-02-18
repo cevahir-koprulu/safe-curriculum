@@ -1,12 +1,8 @@
-# Risk-aware Curriculum Generation for Heavy-tailed Task Distributions
+# Safe Curriculum Generation for Constrained RL
 
-Cevahir Koprulu (1), Thiago D. Simão (2), Nils Jansen (2) and Ufuk Topcu (1)
+Codebase for ICLR 2025 paper [_Safety-Prioritizing Curricula for Constrained Reinforcement Learning_](https://openreview.net/forum?id=f3QR9TEERH&referrer=%5Bthe%20profile%20of%20Cevahir%20Koprulu%5D(%2Fprofile%3Fid%3D~Cevahir_Koprulu1)) by Cevahir Koprulu, Thiago D. Simão, Nils Jansen, and Ufuk Topcu.
 
-(1) The University of Texas at Austin
-
-(2) Radbound University Nijmegen
-
-Accepted for the 39th Conference on Uncertainty in Artificial Intelligence (UAI 2023).
+See iclr2025 branch for the submitted code.
 
 Our codebase is built on the repository of _Curriculum Reinforcement Learning via Constrained Optimal Transport_ (CURROT) by Klink et al. (2022).
 
@@ -16,45 +12,52 @@ Source code: https://github.com/psclklnk/currot/tree/icml (ICML branch)
 
 Paper: https://proceedings.mlr.press/v162/klink22a.html
 
-Cross-entropy methods are originally implemented in the repository of _Efficient Risk-Averse Reinforcement Learning_ (CeSoR) by Greenberg et al. (2022).
+We use the constrained RL algorithms implemented in OmniSafe:
 
-Web sources for CeSoR:
+Web sources for OmniSafe:
 
-Source code: https://github.com/ido90/CeSoR
+Source code: https://www.omnisafe.ai/en/latest/index.html#
 
-Paper: https://proceedings.neurips.cc/paper_files/paper/2022/hash/d2511dfb731fa336739782ba825cd98c-Abstract-Conference.html
 
-We run our codebase on Ubuntu 20.04.5 LTS with Python 3.9.16
+We run our codebase on Ubuntu 20.04.5 LTS with Python 3.10
 
 ## Installation
 
-The required packages are provided in a requirements.txt file which can be installed via the following command;
+The required packages are provided below with the bash commands for installation:
 ```bash
-pip install -r requirements.txt
+conda install -c conda-forge cyipopt
+pip install torch torchvision torchaudio
+pip install omnisafe
+pip install scikit-learn
+pip install gpytorch
+pip install pyro-ppl
+pip install gurobipy
+pip install geomloss
 ```
 
 ## How to run
 To run a single experiment (training + evaluation), *run.py* can be called as follows (you can put additional parameters):
 ```bash
-python run.py --train --eval 0 --env point_mass_2d_heavytailed --type self_paced_with_cem --target_type wide --DIST_TYPE cauchy --seed 1 # RACGEN
-python run.py --train --eval 0 --env point_mass_2d_heavytailed --type self_paced_with_cem --target_type wide --DIST_TYPE gaussian --seed 1 # RACGEN-N
-python run.py --train --eval 0 --env point_mass_2d_heavytailed --type self_paced --target_type wide --DIST_TYPE cauchy --seed 1 # SPDL
-python run.py --train --eval 0 --env point_mass_2d_heavytailed --type self_paced --target_type wide --DIST_TYPE gaussian --seed 1 # SPDL-N
-python run.py --train --eval 0 --env point_mass_2d_heavytailed --type default_with_cem --target_type wide --seed 1 # Default-CEM
-python run.py --train --eval 0 --env point_mass_2d_heavytailed --type default --target_type wide --seed 1 # Default
-python run.py --train --eval 0 --env point_mass_2d_heavytailed --type wasserstein --target_type wide --seed 1 # CURROT
-python run.py --train --eval 0 --env point_mass_2d_heavytailed --type alp_gmm --target_type wide --seed 1 # ALP-GMM
-python run.py --train --eval 0 --env point_mass_2d_heavytailed --type goal_gan --target_type wide --seed 1 # GoalGAN
-python run.py --train --eval 0 --env point_mass_2d_heavytailed --type plr --target_type wide --seed 1 # PLR
-python run.py --train --eval 0 --env point_mass_2d_heavytailed --type vds --target_type wide --seed 1 # VDS
+python run.py --train --eval --env safety_maze_3d --type constrained_wasserstein --learner PPOLag --seed 1 # SCG
+python run.py --train --eval --env safety_maze_3d --type wasserstein --learner PPOLag --PEN_COEFT 1.0 --seed 1 # NaiveSafeCURROT
+python run.py --train --eval --env safety_maze_3d --type wasserstein --learner PPOLag --PEN_COEFT 0.0 --seed 1 # CURROT
+python run.py --train --eval --env safety_maze_3d --type wasserstein4cost --learner PPOLag --seed 1 # CURROT4Cost
+python run.py --train --eval --env safety_maze_3d --type self_paced --learner PPOLag --seed 1 # SPDL
+python run.py --train --eval --env safety_maze_3d --type plr --learner PPOLag --seed 1 # PLR
+python run.py --train --eval --env safety_maze_3d --type alp_gmm --learner PPOLag --seed 1 # ALP-GMM
+python run.py --train --eval --env safety_maze_3d --type goal_gan --learner PPOLag --seed 1 # GoalGAN
+python run.py --train --eval --env safety_maze_3d --type default --learner PPOLag --seed 1 # Default
 ```
-The results demonstrated in our submitted paper can be run via *run_{environment_name}_experiments.py* by changing environment_name to one of the following:
-- point_mass_2d_heavytailed_wide
-- lunar_lander_2d_heavytailed_wide
-
 
 ## Evaluation
-Under *misc* directory, there are three scripts:
-1) *plot_expected_performance.py*: We use this script to plot the progression of expected return during training.
-3) *plot_stat_return.py*: We run this script to obtain a box plot for the distribution of the discounted return obtained by final policies in contexts drawn from the target context distribution. One can use this script to run statistical significance tests, as we did for the paper.
-4) *sample_eval_contexts.py*: We run this script to draw contexts from the target context distributions and record them to be used for evaluation of trained policies.
+Under *misc* directory, you can the scripts to obtain figures in the paper:
+1) *plot_progression_of_results.py*: We use this script to plot the progression of reward, success, cost, regret during training and in contexts from target context distributions.
+2) *plot_final_stats.py*: We run this script to obtain a box plots for expected success, discounted cumulative reward and cost, as well as regret, obtained at the final curriculum iteration.
+3) *plot_safety_maze_curriculum_progression.py*: We run this script to obtain a curriculum evolution figure in safety-maze.
+4) *plot_safety_goal_curriculum_progression.py*: We run this script to obtain a curriculum evolution figure in safety-goal.
+5) *plot_safety_passage_curriculum_progression.py*: We run this script to obtain a curriculum evolution figure in safety-passage.
+6) *plot_safety_passage_push_curriculum_progression.py*: We run this script to obtain a curriculum evolution figure in safety-push.
+7) *sample_eval_contexts.py*: We run this script to draw contexts from the target context distributions and record them to be used for evaluation of trained policies.
+
+
+

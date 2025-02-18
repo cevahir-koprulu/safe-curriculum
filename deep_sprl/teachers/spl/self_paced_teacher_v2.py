@@ -9,9 +9,6 @@ import os
 import pickle
 import time
 
-from torchquad import MonteCarlo, set_up_backend
-
-
 TORCH_DIST_DICT = {
     "gaussian": GaussianTorchDistribution,
     "cauchy": CauchyTorchDistribution,
@@ -113,6 +110,9 @@ class SelfPacedTeacherV2(AbstractTeacher, AbstractSelfPacedTeacher):
         super(SelfPacedTeacherV2, self).__init__(initial_mean, flat_init_chol, target_log_likelihood, target_sampler,
                                                  max_kl, context_bounds, callback=callback, dist_type=dist_type,
                                                  ext_bounds=ext_bounds)
+
+    def __str__(self) -> str:
+        return "self_paced"
 
     def old_kl_con(self, x, old_context_dist, obj=True, grad=False):
         dist = self.torch_dist.from_weights(self.context_dim, x, dtype=torch.float64)
@@ -261,9 +261,9 @@ class SelfPacedTeacherV2(AbstractTeacher, AbstractSelfPacedTeacher):
             with open(os.path.join("opt_errors", "error_" + str(time.time())), "wb") as f:
                 pickle.dump((self.context_dist.get_weights(), contexts, values), f)
             print("Exception occurred during optimization! Storing state and re-raising!")
-            raise e
-            # old_dist_weight = self.context_dist.get_weights().copy()
-            # res = FooResult(fun=objective(old_dist_weight)[0], x=old_dist_weight, message="Exception occurred during optimization!")
+            # raise e
+            old_dist_weight = self.context_dist.get_weights().copy()
+            res = FooResult(fun=objective(old_dist_weight)[0], x=old_dist_weight, message="Exception occurred during optimization!")
 
         # If it was not a success, but the objective value was improved and the bounds are still valid, we still
         # use the result

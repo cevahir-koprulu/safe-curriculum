@@ -9,6 +9,7 @@ class Buffer:
     def __init__(self, n_elements, max_buffer_size, reset_on_query):
         self.reset_on_query = reset_on_query
         self.max_buffer_size = max_buffer_size
+        self.n_elements = n_elements
         self.buffers = [list() for i in range(0, n_elements)]
 
     def update_buffer(self, datas):
@@ -96,9 +97,11 @@ class RewardEstimatorGP:
             # Zero gradients from previous iteration
             optimizer.zero_grad()
             # Output from model
-            output = self.gp(self.x)
+            with gpytorch.settings.cholesky_jitter(1e-1):
+                output = self.gp(self.x)
             # Calc loss and backprop gradients
-            loss = -mll(output, self.y)
+            with gpytorch.settings.cholesky_jitter(1e-1):
+                loss = -mll(output, self.y)
             loss.backward()
             optimizer.step()
 
@@ -108,14 +111,16 @@ class RewardEstimatorGP:
         likelihood.eval()
 
     def predict_mean(self, samples):
-        return torch.mean(self.gp(samples).mean)
+        with gpytorch.settings.cholesky_jitter(1e-1):
+            return torch.mean(self.gp(samples).mean)
 
     def predict_individual(self, samples, with_gradient=False):
         samples_torch = torch.from_numpy(samples).float()
         if with_gradient:
             samples_torch = samples_torch.requires_grad_(True)
-
-        perf = self.gp(samples_torch).mean
+    
+        with gpytorch.settings.cholesky_jitter(1e-1):
+            perf = self.gp(samples_torch).mean
         if with_gradient:
             grad = torch.autograd.grad(perf, samples_torch, grad_outputs=torch.ones_like(perf))[0]
             return perf.detach().numpy().astype(samples.dtype), grad.detach().numpy().astype(samples.dtype)

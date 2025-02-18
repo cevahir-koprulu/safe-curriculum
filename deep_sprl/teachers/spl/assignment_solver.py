@@ -14,16 +14,18 @@ class AssignmentSolver:
         # We model the assignments as a binary variable of shape (n_new, n_cur)
         n_source = n_new + n_target
         self.assignments = self.model.addMVar((n_source, n_target), vtype=gurobipy.GRB.BINARY, name="assignments")
-
         # There will be (n_source + n_target) constraints, modelling that a source sample can at most be used twice and
         # that all targets must be matched by exactly one source sample
         for i in range(n_target):
-            self.model.addLConstr(sum(self.assignments[j, i] for j in range(n_source)), gurobipy.GRB.EQUAL, 1,
+            self.model.addConstr(sum(self.assignments[j, i] for j in range(n_source)) == 1,
                                   "out_%d" % i)
+            # self.model.addLConstr(sum(self.assignments[j, i] for j in range(n_source)), gurobipy.GRB.EQUAL, 1,
+            #                       "out_%d" % i)
 
         for j in range(n_source):
-            self.model.addLConstr(sum(self.assignments[j, i] for i in range(n_target)), gurobipy.GRB.LESS_EQUAL,
-                                  max_reuse, "in_%d" % j)
+            self.model.addConstr(sum(self.assignments[j, i] for i in range(n_target)) <= max_reuse, "in_%d" % j)
+            # self.model.addLConstr(sum(self.assignments[j, i] for i in range(n_target)), gurobipy.GRB.LESS_EQUAL,
+            #                       max_reuse, "in_%d" % j)
 
         self.model.setParam("Threads", 1)
         self.n_source = n_source
@@ -51,7 +53,7 @@ class AssignmentSolver:
 if __name__ == "__main__":
     np.random.seed(0)
     n = 200
-    n_new = 50
+    n_new = 20
     data1 = np.random.uniform(-1, 1, size=(n + n_new, 2))
     data2 = np.random.uniform(-1, 1, size=(n, 2))
 

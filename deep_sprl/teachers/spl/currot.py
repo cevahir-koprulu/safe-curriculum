@@ -28,6 +28,9 @@ class CurrOT(AbstractTeacher):
         self.fail_return_buffer = []
         self.sampler = UniformSampler(self.context_bounds)
 
+    def __str__(self) -> str:
+        return "wasserstein"
+
     def on_rollout_end(self, context, ret):
         self.sampler.update(context, ret)
 
@@ -87,7 +90,7 @@ class AbstractSuccessBuffer(ABC):
         self.contexts = np.zeros((1, len(context_bounds[0])))
         self.returns = np.array([-np.inf])
         self.delta_reached = False
-        self.min_ret = None
+        self.min_ret = np.inf
 
     @abstractmethod
     def update_delta_not_reached(self, new_contexts: np.ndarray, new_returns: np.ndarray,
@@ -102,8 +105,7 @@ class AbstractSuccessBuffer(ABC):
     def update(self, contexts, returns, current_samples):
         assert contexts.shape[0] < self.max_size
 
-        if self.min_ret is None:
-            self.min_ret = np.min(returns)
+        self.min_ret = min(self.min_ret, np.min(returns))
 
         if not self.delta_reached:
             self.delta_reached, self.contexts, self.returns, mask = self.update_delta_not_reached(contexts, returns,

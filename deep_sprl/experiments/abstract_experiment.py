@@ -1,21 +1,18 @@
 import os
 import time
 import torch
+import random
 import pickle
+import omnisafe
 import numpy as np
 from abc import ABC, abstractmethod
 from enum import Enum
 from deep_sprl.util.parameter_parser import create_override_appendix
-from deep_sprl.teachers.spl import SelfPacedTeacherV2
-from deep_sprl.aux_teachers.cem import CEM
-
-from stable_baselines3.sac import SAC
-from stable_baselines3.ppo import PPO
-from stable_baselines3.common.vec_env import VecEnv, DummyVecEnv
-from stable_baselines3.ppo.policies import MlpPolicy as PPOMlpPolicy
-from stable_baselines3.sac.policies import MlpPolicy as SACMlpPolicy
+from omnisafe.models.actor import ActorBuilder
+from omnisafe.common import Normalizer
 
 def set_seed(seed):
+    random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
 
@@ -25,10 +22,13 @@ class CurriculumType(Enum):
     SelfPaced = 3
     Default = 4
     Random = 5
-    Wasserstein = 7
-    ACL = 8
-    PLR = 9
-    VDS = 10
+    Wasserstein = 6
+    ACL = 7
+    PLR = 8
+    VDS = 9
+    ConstrainedSelfPaced = 10
+    ConstrainedWasserstein = 11
+    Wasserstein4Cost = 12
 
     def __str__(self):
         if self.goal_gan():
@@ -47,6 +47,12 @@ class CurriculumType(Enum):
             return "plr"
         elif self.vds():
             return "vds"
+        elif self.constrained_self_paced():
+            return "constrained_self_paced"
+        elif self.constrained_wasserstein():
+            return "constrained_wasserstein"
+        elif self.wasserstein4cost():
+            return "wasserstein4cost"
         else:
             return "random"
 
@@ -76,6 +82,15 @@ class CurriculumType(Enum):
 
     def vds(self):
         return self.value == CurriculumType.VDS.value
+    
+    def constrained_self_paced(self):
+        return self.value == CurriculumType.ConstrainedSelfPaced.value
+
+    def constrained_wasserstein(self):
+        return self.value == CurriculumType.ConstrainedWasserstein.value
+
+    def wasserstein4cost(self):
+        return self.value == CurriculumType.Wasserstein4Cost.value
 
     @staticmethod
     def from_string(string):
@@ -97,144 +112,128 @@ class CurriculumType(Enum):
             return CurriculumType.PLR
         elif string == str(CurriculumType.VDS):
             return CurriculumType.VDS
+        elif string == str(CurriculumType.ConstrainedSelfPaced):
+            return CurriculumType.ConstrainedSelfPaced
+        elif string == str(CurriculumType.ConstrainedWasserstein):
+            return CurriculumType.ConstrainedWasserstein
+        elif string == str(CurriculumType.Wasserstein4Cost):
+            return CurriculumType.Wasserstein4Cost
         else:
             raise RuntimeError("Invalid string: '" + string + "'")
 
-
 class AgentInterface(ABC):
 
-    def __init__(self, learner, obs_dim, device):
+    def __init__(self, learner, device):
         self.learner = learner
-        self.obs_dim = obs_dim
         self.device = device
 
-    def estimate_value(self, inputs):
-        return self.estimate_value_internal(inputs)
+    def estimate_value_r(self, observations):
+        action, value_r, value_c, log_prob = self.learner._actor_critic.step(observations, deterministic=False)
+        return value_r.detach().cpu().numpy()  
 
-    @abstractmethod
-    def estimate_value_internal(self, inputs):
-        pass
+    def estimate_value_c(self, observations):
+        action, value_r, value_c, log_prob = self.learner._actor_critic.step(observations, deterministic=False)
+        return value_c.detach().cpu().numpy()
 
-    @abstractmethod
-    def mean_policy_std(self, cb_args, cb_kwargs):
-        pass
+    def mean_policy_std(self):
+        return self.learner._actor_critic.actor.std.detach().cpu().numpy()
 
-    @abstractmethod
     def get_action(self, observations):
-        pass
+        action, value_r, value_c, log_prob = self.learner._actor_critic.step(observations, deterministic=False)
+        return action.detach().cpu().numpy()
 
     def save(self, log_dir):
-        self.learner.save(os.path.join(log_dir, "model"))
-
-
-class SACInterface(AgentInterface):
-
-    def __init__(self, learner, obs_dim, device):
-        super().__init__(learner, obs_dim, device)
-
-    def estimate_value_internal(self, inputs):
-        return np.squeeze(self.learner.sess.run([self.learner.step_ops[6]], {self.learner.observations_ph: inputs}))
-
-    def get_action(self, observations):
-        flat_obs = np.reshape(observations, (-1, observations.shape[-1]))
-        flat_acts = self.learner.predict(flat_obs, deterministic=False)[0]
-        acts = np.reshape(flat_acts, (observations.shape[0:-1]) + (-1,))
-        return acts
-
-    def mean_policy_std(self, cb_args, cb_kwargs):
-        if "infos_values" in cb_args[0] and len(cb_args[0]["infos_values"]) > 0:
-            return cb_args[0]["infos_values"][4]
-        else:
-            return np.nan
-
-
-class PPOInterface(AgentInterface):
-
-    def __init__(self, learner, obs_dim, device):
-        super().__init__(learner, obs_dim, device)
-        self.grad_fn = []
-
-    def estimate_value_internal(self, inputs):
-        vals = self.learner.policy.predict_values(torch.from_numpy(inputs).to(
-            self.device))
-        return np.squeeze(vals.detach().cpu().numpy())
-
-    def get_action(self, observations):
-        flat_obs = np.reshape(observations, (-1, observations.shape[-1]))
-        flat_acts = self.learner.predict(flat_obs, deterministic=False)[0]
-        return np.reshape(flat_acts, (observations.shape[0:-1]) + (-1,))
-
-    def mean_policy_std(self, cb_args, cb_kwargs):
-        std_th = self.learner.policy.get_distribution(torch.zeros((1, self.obs_dim)).to(
-            self.device)).distribution.stddev[0]
-        return np.mean(std_th.detach().cpu().numpy())
-
-
-class SACEvalWrapper:
-
-    def __init__(self, model):
-        self.model = model
-
-    def step(self, observation, state=None, deterministic=False):
-        return self.model.predict(observation, state=state, deterministic=deterministic)[0]
-
-
-class PPOEvalWrapper:
-
-    def __init__(self, model):
-        self.model = model
-
-    def step(self, observation, state=None, deterministic=False):
-        if len(observation.shape) == 1:
-            observation = observation[None, :]
-            return self.model.predict(observation, state=state, deterministic=deterministic)[0][0, :]
-        else:
-            return self.model.predict(observation, state=state, deterministic=deterministic)[0]
-
+        params = {
+            'actor_critic': self.learner._actor_critic.state_dict() 
+            if hasattr(self.learner._actor_critic, 'state_dict') 
+            else self.learner._actor_critic,
+        }
+        torch.save(params, log_dir)
 
 class Learner(Enum):
     PPO = 1
     SAC = 2
+    PPOLag = 3
+    CPO = 4
+    FOCOPS = 5
+    PCPO = 6
 
     def __str__(self):
         if self.ppo():
-            return "ppo"
+            return "PPO"
+        elif self.sac():
+            return "SAC"
+        elif self.ppolag():
+            return "PPOLag"
+        elif self.cpo():
+            return "CPO"
+        elif self.focops():
+            return "FOCOPS"
+        elif self.pcpo():
+            return "PCPO"
         else:
-            return "sac"
+            return "Invalid"
 
     def ppo(self):
         return self.value == Learner.PPO.value
 
     def sac(self):
         return self.value == Learner.SAC.value
+    
+    def ppolag(self):
+        return self.value == Learner.PPOLag.value
 
-    def create_learner(self, env, parameters):
-        if self.ppo() and not issubclass(type(env), VecEnv):
-            env = DummyVecEnv([lambda: env])
+    def cpo(self):
+        return self.value == Learner.CPO.value
+    
+    def focops(self):
+        return self.value == Learner.FOCOPS.value
+    
+    def pcpo(self):
+        return self.value == Learner.PCPO.value
 
-        if self.ppo():
-            model = PPO(PPOMlpPolicy, env, **parameters["common"], **parameters[str(self)])
-            interface = PPOInterface(model, env.observation_space.shape[0], parameters["common"]["device"])
+    def is_constrained(self):
+        return self.ppolag() or self.cpo() or self.focops() or self.pcpo()
+    
+    def create_learner(self, env_id, custom_cfgs, wrapper_kwargs=None):
+        model = omnisafe.Agent(str(self), env_id, custom_cfgs=custom_cfgs)
+        if wrapper_kwargs is not None:
+            model.agent._env._env.initialize_wrapper(**wrapper_kwargs)
+        return model, AgentInterface(model, model.agent._device)
+
+    def load_for_evaluation(self, model_path, obs_space, act_space, custom_cfgs, device='cpu'):
+        actor_builder = ActorBuilder(
+            obs_space=obs_space,
+            act_space=act_space,
+            hidden_sizes=custom_cfgs['model_cfgs']['actor']['hidden_sizes'],
+            activation=custom_cfgs['model_cfgs']['actor']['activation'],
+            weight_initialization_mode=custom_cfgs['model_cfgs']['weight_initialization_mode'],
+        )
+        actor = actor_builder.build_actor(custom_cfgs['model_cfgs']['actor_type'])
+        model_params = torch.load(model_path, map_location=device)
+        actor.load_state_dict(model_params['pi'])
+        old_min_action = torch.tensor(
+            act_space.low,
+            dtype=torch.float32,
+            device='cpu',
+        )
+        old_max_action = torch.tensor(
+            act_space.high,
+            dtype=torch.float32,
+            device='cpu',
+        )
+        min_action = torch.zeros_like(old_min_action, device='cpu') - 1
+        max_action = torch.zeros_like(old_min_action, device='cpu') + 1
+        def descale_action(scaled_act):
+            return old_min_action + (old_max_action - old_min_action) * (
+                scaled_act - min_action) / (max_action - min_action)
+        
+        if "obs_normalizer" in model_params:
+            normalizer = Normalizer(obs_space.shape)
+            normalizer.load_state_dict(model_params["obs_normalizer"])
+            return lambda obs: descale_action(actor.predict(normalizer.normalize(obs), deterministic=False))
         else:
-            model = SAC(SACMlpPolicy, env, **parameters["common"], **parameters[str(self)])
-            interface = SACInterface(model, env.observation_space.shape[0], parameters["common"]["device"])
-
-        return model, interface
-
-    def load(self, path, env, device):
-        if self.ppo():
-            return PPO.load(path, env=env, device=device)
-        else:
-            return SAC.load(path, env=env, device=device)
-
-    def load_for_evaluation(self, path, env, device):
-        if self.ppo() and not issubclass(type(env), VecEnv):
-            env = DummyVecEnv([lambda: env])
-        model = self.load(path, env, device)
-        if self.sac():
-            return SACEvalWrapper(model)
-        else:
-            return PPOEvalWrapper(model)
+            return lambda obs: descale_action(actor.predict(obs, deterministic=False))
 
     @staticmethod
     def from_string(string):
@@ -242,119 +241,35 @@ class Learner(Enum):
             return Learner.PPO
         elif string == str(Learner.SAC):
             return Learner.SAC
+        elif string == str(Learner.PPOLag):
+            return Learner.PPOLag
+        elif string == str(Learner.CPO):
+            return Learner.CPO
+        elif string == str(Learner.FOCOPS):
+            return Learner.FOCOPS
+        elif string == str(Learner.PCPO):
+            return Learner.PCPO
         else:
             raise RuntimeError("Invalid string: '" + string + "'")
 
-
-class ExperimentCallback:
-
-    def __init__(self, log_directory, learner, env_wrapper, save_interval=5, step_divider=1):
-        self.log_dir = os.path.realpath(log_directory)
-        self.learner = learner
-        self.env_wrapper = env_wrapper
-        self.save_interval = save_interval
-        self.algorithm_iteration = 0
-        self.step_divider = step_divider
-        self.iteration = 0
-        self.last_time = None
-        self.format = "   %4d    | %.1E |   %3d    |  %.2E  |  %.2E  |  %.2E   "
-        if self.env_wrapper.teacher is not None:
-            if isinstance(self.env_wrapper.teacher, SelfPacedTeacherV2):
-                context_dim = self.env_wrapper.teacher.context_dim
-                text = "| [%.2E"
-                for i in range(0, context_dim - 1):
-                    text += ", %.2E"
-                text += "] "
-                self.format += text + text
-        if env_wrapper.aux_teacher is not None:
-            if isinstance(self.env_wrapper.aux_teacher, CEM):
-                context_dim = self.env_wrapper.aux_teacher.context_dim
-                # aux mean, aux std
-                text = "| [%.2E"
-                for i in range(0, context_dim - 1):
-                    text += ", %.2E"
-                text += "] "
-                self.format += text + text
-                # q_ref, q_internal, RALPH
-                for i in range(3):
-                    self.format += "|  %.2E  "
-
-        header = " Iteration |  Time   | Ep. Len. | Mean Reward | Mean Disc. Reward | Mean Policy STD "
-        if self.env_wrapper.teacher is not None:
-            if isinstance(self.env_wrapper.teacher, SelfPacedTeacherV2):
-                header += "|     Context mean     |      Context std     "
-        if env_wrapper.aux_teacher is not None:
-            if isinstance(self.env_wrapper.aux_teacher, CEM):
-                # q_ref, q_internal, RALPH
-                header += "|     AUX mean     |      AUX std     "\
-                          "|     Reference q     |      Internal Q     |" \
-                          "     Reference alpha     "
-
-        print(header)
-
-    def __call__(self, *args, **kwargs):
-        if self.algorithm_iteration % self.step_divider == 0:
-            data_tpl = (self.iteration,)
-
-            t_new = time.time()
-            dt = np.nan
-            if self.last_time is not None:
-                dt = t_new - self.last_time
-            data_tpl += (dt,)
-
-            mean_rew, mean_disc_rew, mean_length = self.env_wrapper.get_statistics()
-            data_tpl += (int(mean_length), mean_rew, mean_disc_rew)
-
-            data_tpl += (self.learner.mean_policy_std(args, kwargs),)
-
-            # Extra logging info
-            if isinstance(self.env_wrapper.teacher, SelfPacedTeacherV2):
-                context_mean = self.env_wrapper.teacher.context_dist.mean()
-                context_std = np.sqrt(np.diag(self.env_wrapper.teacher.context_dist.covariance_matrix()))
-                data_tpl += tuple(context_mean.tolist())
-                data_tpl += tuple(context_std.tolist())
-            if isinstance(self.env_wrapper.aux_teacher, CEM):
-                aux_mean, aux_std = self.env_wrapper.aux_teacher.get_sample_dist()
-                data_tpl += tuple(aux_mean.tolist())
-                data_tpl += tuple(aux_std.tolist())
-                data_tpl += (self.env_wrapper.aux_teacher.get_reference_q(),
-                             self.env_wrapper.aux_teacher.get_internal_q(),
-                             self.env_wrapper.aux_teacher.get_reference_alpha())
-
-            print(self.format % data_tpl)
-
-            if self.iteration % self.save_interval == 0:
-                iter_log_dir = os.path.join(self.log_dir, "iteration-" + str(self.iteration))
-                os.makedirs(iter_log_dir, exist_ok=True)
-
-                with open(os.path.join(iter_log_dir, "context_trace.pkl"), "wb") as f:
-                    pickle.dump(self.env_wrapper.get_encountered_contexts(), f)
-
-                self.learner.save(iter_log_dir)
-                if self.env_wrapper.teacher is not None:
-                    self.env_wrapper.teacher.save(iter_log_dir)
-
-                # SAVE AUXILIARY DISTRIBUTION!
-                if self.env_wrapper.aux_teacher is not None:
-                    self.env_wrapper.aux_teacher.save(iter_log_dir)
-
-            self.last_time = time.time()
-            self.iteration += 1
-
-        self.algorithm_iteration += 1
-
-
 class AbstractExperiment(ABC):
-    APPENDIX_KEYS = {"default": ["DISCOUNT_FACTOR", "STEPS_PER_ITER", "LAM"],
-                     CurriculumType.SelfPaced: ["DELTA", "KL_EPS", "DIST_TYPE", "INIT_VAR"],
-                     CurriculumType.Wasserstein: ["DELTA", "METRIC_EPS"],
+    APPENDIX_KEYS = {
+                    "default": ["DISCOUNT_FACTOR", "STEPS_PER_ITER", "LAM"],
+                     CurriculumType.SelfPaced: ["DELTA", "KL_EPS", "DIST_TYPE", "INIT_VAR", "PEN_COEFT"],
+                     CurriculumType.Wasserstein: ["DELTA", "METRIC_EPS", "PEN_COEFT"],
                      CurriculumType.GoalGAN: ["GG_NOISE_LEVEL", "GG_FIT_RATE", "GG_P_OLD"],
                      CurriculumType.ALPGMM: ["AG_P_RAND", "AG_FIT_RATE", "AG_MAX_SIZE"],
                      CurriculumType.Random: [],
                      CurriculumType.Default: [],
                      CurriculumType.ACL: ["ACL_EPS", "ACL_ETA"],
                      CurriculumType.PLR: ["PLR_REPLAY_RATE", "PLR_BETA", "PLR_RHO"],
-                     CurriculumType.VDS: ["VDS_NQ", "VDS_LR", "VDS_EPOCHS", "VDS_BATCHES"]}
+                     CurriculumType.VDS: ["VDS_NQ", "VDS_LR", "VDS_EPOCHS", "VDS_BATCHES"],
+                     CurriculumType.ConstrainedSelfPaced: ["DELTA_CT", "DELTA", 
+                                                          "KL_EPS", "DIST_TYPE", "INIT_VAR"],
+                    CurriculumType.ConstrainedWasserstein: ["DELTA_CT", "DELTA", "METRIC_EPS",
+                                                            "ATP", "CAS", "RAS", "PS", "PP"],
+                    CurriculumType.Wasserstein4Cost: ["DELTA_CT", "METRIC_EPS",],
+                                                          }
 
     def __init__(self, base_log_dir, curriculum_name, learner_name, parameters, seed, device, view=False):
         self.device = device
@@ -377,10 +292,6 @@ class AbstractExperiment(ABC):
 
     @abstractmethod
     def create_self_paced_teacher(self):
-        pass
-
-    @abstractmethod
-    def create_cem_teacher(self):
         pass
 
     @abstractmethod
@@ -408,9 +319,11 @@ class AbstractExperiment(ABC):
                              "GG_P_OLD": float, "DELTA": float, "EPS": float, "MAZE_TYPE": str, "ACL_EPS": float,
                              "ACL_ETA": float, "PLR_REPLAY_RATE": float, "PLR_BETA": float, "PLR_RHO": float,
                              "VDS_NQ": int, "VDS_LR": float, "VDS_EPOCHS": int, "VDS_BATCHES": int,
-                             "DIST_TYPE": str, "TARGET_TYPE": str, "KL_EPS": float,
-                             "RALPH_IN": float, "RALPH": float, "RALPH_SCH": int, 
-                             "EP_PER_UPDATE": int, "EP_PER_AUX_UPDATE": int, "INIT_VAR":float,
+                             "DIST_TYPE": str, "TARGET_TYPE": str, "KL_EPS": float, 
+                             "EP_PER_UPDATE": int, "INIT_VAR":float, 
+                             "DELTA_CS": float, "DELTA_CT": float, ""
+                             "METRIC_EPS": float, "ATP": float, "CAS": int, "RAS": int,
+                             "PS": bool, "PP": bool, "PEN_COEFS": float, "PEN_COEFT": float,
         }
         for key in sorted(self.parameters.keys()):
             if key not in allowed_overrides:
@@ -418,14 +331,21 @@ class AbstractExperiment(ABC):
 
             value = self.parameters[key]
             tmp = getattr(self, key)
+            print(f"Setting {key} to {value}")
             if isinstance(tmp, dict):
                 tmp[self.learner] = allowed_overrides[key](value)
+            if isinstance(tmp, bool):
+                setattr(self, key, value == "True")
             else:
                 setattr(self, key, allowed_overrides[key](value))
 
     def get_log_dir(self):
         override_appendix = create_override_appendix(self.APPENDIX_KEYS["default"], self.parameters)
         leaner_string = str(self.learner)
+        if self.learner.is_constrained():
+            leaner_string += "_DELTA_CS=" + str(self.DELTA_CS).replace(" ", "")
+        else:
+            leaner_string += f"PEN_COEFS={self.PEN_COEFS}"
         key_list = self.APPENDIX_KEYS[self.curriculum]
         for key in sorted(key_list):
             tmp = getattr(self, key)
@@ -437,25 +357,31 @@ class AbstractExperiment(ABC):
                             leaner_string + override_appendix + self.get_other_appendix(), "seed-" + str(self.seed))
 
     def train(self):
-        model, timesteps, callback_params = self.create_experiment()
-        log_directory = self.get_log_dir()
-
-        if os.path.exists(log_directory):
-            print("Log directory already exists! Going directly to evaluation")
-        else:
-            callback = ExperimentCallback(log_directory=log_directory, **callback_params)
-            model.learn(total_timesteps=timesteps, reset_num_timesteps=False, callback=callback)
-
-        # callback = ExperimentCallback(log_directory=log_directory, **callback_params)
-        # model.learn(total_timesteps=timesteps, reset_num_timesteps=False, callback=callback)
+        model, omnisafe_log_dir = self.create_experiment()
+        os.makedirs(self.get_log_dir(), exist_ok=True)
+        with open(os.path.join(self.get_log_dir(), 'omnisafe_log_dir.txt'), 'w') as f:
+            f.write(omnisafe_log_dir)
+        model.learn()
 
     def evaluate(self, eval_type=0):
         log_dir = self.get_log_dir()
-
         iteration_dirs = [d for d in os.listdir(log_dir) if d.startswith("iteration-")]
         unsorted_iterations = np.array([int(d[len("iteration-"):]) for d in iteration_dirs])
         idxs = np.argsort(unsorted_iterations)
-        sorted_iteration_dirs = np.array(iteration_dirs)[idxs].tolist()
+        sorted_iterations = unsorted_iterations[idxs]
+        sorted_iteration_dirs = [f"iteration-{i}" for i in sorted_iterations]
+
+        with open(os.path.join(log_dir, 'omnisafe_log_dir.txt'), 'r') as f:
+            omnisafe_log_dir = f.read()
+        omnisafe_saved_models = [d for d in os.listdir(os.path.join(omnisafe_log_dir, 'torch_save'))]
+        # unsorted_models = np.array([int(d[len("epoch-"):-3]) for d in omnisafe_saved_models
+        #                             if f'iteration-{d[len("epoch-"):-3]}' in iteration_dirs])
+        unsorted_models = np.array([int(d[len("epoch-"):-3]) for d in omnisafe_saved_models])
+        idxs = np.argsort(unsorted_models)
+        sorted_models = unsorted_models[idxs]
+        # assuming that there is at least one model update per curriculum update
+        num_model_skip = (len(sorted_models)) // (len(sorted_iterations))
+        sorted_model_dirs =[f"epoch-{model_i}.pt" for model_i in sorted_models[::num_model_skip][:len(sorted_iterations)]]
 
         # First evaluate the KL-Divergences if Self-Paced learning was used
         if self.curriculum.self_paced() and not os.path.exists(os.path.join(log_dir, "kl_divergences.pkl")):
@@ -474,15 +400,22 @@ class AbstractExperiment(ABC):
             0: "performance",
             1: "performance_hom",
         }
-        for iteration_dir in sorted_iteration_dirs:
+        # For evaluation type-1, only use the last iteration
+        if eval_type == 1:
+            # print(sorted_iteration_dirs)
+            sorted_iteration_dirs = [sorted_iteration_dirs[-1]]
+            sorted_model_dirs = [sorted_model_dirs[-1]]
+
+        for iteration_dir, saved_model in zip(sorted_iteration_dirs, sorted_model_dirs):
             print(f"Evaluating {iteration_dir} (eval_type={eval_type})")
             iteration_log_dir = os.path.join(log_dir, iteration_dir)
             performance_log_dir = os.path.join(iteration_log_dir, f"{performance_files[eval_type]}.npy")
+            model_path = os.path.join(omnisafe_log_dir, 'torch_save', saved_model)
             eval_type_str = performance_files[eval_type][len("performance"):]
-            if not os.path.exists(performance_log_dir):
-            # if True:
+            # if not os.path.exists(performance_log_dir):
+            if True:
                 disc_rewards, eval_contexts, context_p, successful_eps, costs = self.evaluate_learner(
-                    path=iteration_log_dir,
+                    model_path=model_path,
                     eval_type=eval_type_str,
                 )
                 print(f"Evaluated {iteration_dir} (eval_type={eval_type}): {np.mean(disc_rewards)}")
@@ -505,20 +438,33 @@ class AbstractExperiment(ABC):
         idxs = np.argsort(unsorted_iterations)
         sorted_iteration_dirs = np.array(iteration_dirs)[idxs].tolist()
 
-        if self.curriculum.self_paced():
-            for iteration_dir in sorted_iteration_dirs:
+        with open(os.path.join(log_dir, 'omnisafe_log_dir.txt'), 'r') as f:
+            omnisafe_log_dir = f.read()
+        omnisafe_saved_models = [d for d in os.listdir(os.path.join(omnisafe_log_dir, 'torch_save'))]
+        unsorted_models = np.array([int(d[len("epoch-"):-3]) for d in omnisafe_saved_models])
+        idxs = np.argsort(unsorted_models)
+        sorted_models = np.array(omnisafe_saved_models)[idxs].tolist()
+        
+        if self.curriculum.self_paced() or self.curriculum.constrained_self_paced() or \
+            self.curriculum.wasserstein() or self.curriculum.constrained_wasserstein() or \
+                self.curriculum.wasserstein4cost():
+            for iteration_dir, saved_model in zip(sorted_iteration_dirs, sorted_models):
                 print(f"Evaluating wrt context distribution in {iteration_dir}")
                 iteration_log_dir = os.path.join(log_dir, iteration_dir)
                 teacher = self.create_self_paced_teacher()
                 teacher.load(iteration_log_dir)
+                model_path = os.path.join(omnisafe_log_dir, 'torch_save', saved_model)
                 training_contexts = np.array([teacher.sample() for _ in range(num_contexts)])
                 performance_log_dir = os.path.join(iteration_log_dir, "performance_training.npy")
                 if not os.path.exists(performance_log_dir):
+                # if True:
                     disc_rewards, successful_eps, costs = self.evaluate_training(
-                        path=iteration_log_dir,
+                        model_path=model_path,
                         training_contexts=training_contexts,
                     )
-                    context_p = teacher.context_dist.log_pdf_t(torch.from_numpy(training_contexts)).detach().numpy() 
+                    context_p = np.zeros((num_contexts, 1))
+                    if self.curriculum.self_paced() or self.curriculum.constrained_self_paced():
+                        context_p = teacher.target_dist.log_pdf_t(torch.from_numpy(training_contexts)).detach().numpy()
                     print(f"Evaluated: {np.mean(disc_rewards)}")
                     disc_rewards = np.array(disc_rewards)
                     stats = np.ones((num_contexts, 1))*int(iteration_dir[len("iteration")+1:])

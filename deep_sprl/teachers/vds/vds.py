@@ -1,8 +1,14 @@
+from typing import ClassVar, List, Dict, Any
+
 import math
 import torch
 import numpy as np
 from deep_sprl.teachers.vds.replay_buffer import ReplayBuffer
 from deep_sprl.teachers.abstract_teacher import AbstractTeacher, BaseWrapper
+
+from gymnasium import spaces
+from omnisafe.envs.core import make, env_register, support_envs
+from omnisafe.typing import DEVICE_CPU
 
 
 class VDS(AbstractTeacher):
@@ -39,12 +45,10 @@ class VDS(AbstractTeacher):
 
         self.device = device
 
-    def initialize_teacher(self, env, learner, state_provider):
-        obs_shape = env.observation_space.shape
-        if len(env.action_space.shape) == 0: 
-            action_dim = 1
-        else:
-            action_dim = env.action_space.shape[0]
+    def __str__(self) -> str:
+        return "vds"
+
+    def initialize_teacher(self, obs_shape, action_dim, learner, state_provider):
         self.replay_buffer = ReplayBuffer(self.q_train_config["replay_size"], obs_shape, action_dim, device=self.device,
                                           handle_timeout_termination=False)
         self.learner = learner
@@ -174,42 +178,84 @@ class EnsembleLinear(torch.nn.Module):
             self.in_features, self.out_features, self.k, self.bias is not None
         )
 
-
+@env_register
 class VDSWrapper(BaseWrapper):
+    _support_envs: ClassVar[List[str]] = [f'VDS-{env_id}'
+                                          for env_id in support_envs() 
+                                          if "Contextual" in env_id
+                                          ]
+    need_auto_reset_wrapper = True
+    need_time_limit_wrapper = True
+    _num_envs = 1
 
-    def __init__(self, env, vds, discount_factor, context_visible, context_post_processing=None):
-        BaseWrapper.__init__(self, env, vds, discount_factor, context_visible,
-                             context_post_processing=context_post_processing)
+    def __init__(self,
+                 env_id: str,
+                 num_envs: int = 1,
+                 device: torch.device = DEVICE_CPU,
+                 **kwargs):
+        super().__init__(env_id, num_envs, device, **kwargs)
+        self._env = make(env_id[len('VDS-'):])
+        self.context_dim = self.context.shape[0]
+        low_ext = np.concatenate((self._env._observation_space.low, -np.inf * np.ones(self.context_dim)))
+        high_ext = np.concatenate((self._env._observation_space.high, np.inf * np.ones(self.context_dim)))
+        self._observation_space = spaces.Box(low=low_ext, high=high_ext)
+        self._action_space = self._env.action_space
+        self._metadata = self._env.metadata
+
+    def initialize_wrapper(self, 
+                           log_dir,
+                           teacher,
+                           discount_factor,
+                           context_post_processing=None,
+                           episodes_per_update=50,
+                           save_interval=5,
+                           step_divider=1,
+                           value_fn=None,
+                           lam=None,
+                           use_undiscounted_reward=False,
+                           reward_from_info=False,
+                           cost_from_info=False,
+                           eval_mode=False,
+                           penalty_coeff_s=0.,
+                           penalty_coeff_t=0.,
+                           wait_until_policy_update=False,
+                            ):
+        super().initialize_wrapper(log_dir, teacher, discount_factor, context_post_processing, 
+                                   episodes_per_update, save_interval, step_divider, value_fn, lam,
+                                   use_undiscounted_reward, reward_from_info, cost_from_info,
+                                   eval_mode, penalty_coeff_s, penalty_coeff_t, wait_until_policy_update)
         self.last_obs = None
         self.step_count = 0
 
-    def reset(self):
-        self.cur_context = self.teacher.sample()
+    def reset(
+            self, 
+            seed: int = None,
+            options: Dict[str, Any] = None):
+        if self.cur_context is None:
+            self.cur_context = self.teacher.sample()
         if self.context_post_processing is None:
             self.processed_context = self.cur_context.copy()
         else:
-            self.processed_context = self.context_post_processing(self.cur_context).copy()
-        self.env.unwrapped.context = self.processed_context.copy()
-        obs = self.env.reset()
-
-        if self.context_visible:
-            obs = np.concatenate((obs, self.processed_context))
-
+            self.processed_context = self.context_post_processing(self.cur_context.copy())
+        self._env.context = self.processed_context.copy()
+        obs, info = self._env.reset(seed=seed, options=options)
+        obs = torch.cat((obs, self.processed_context))
+        
         self.last_obs = obs.copy()
         self.cur_initial_state = obs.copy()
-        return obs
+        return obs, info
 
     def step(self, action):
-        step = self.env.step(action)
-        if self.context_visible:
-            step = np.concatenate((step[0], self.processed_context)), step[1], step[2], step[3]
-        self.teacher.replay_buffer.add(self.last_obs, step[0].copy(), action, step[1], step[2], [])
-        self.last_obs = step[0].copy()
+        obs, reward, cost, terminated, truncated, info = self._env.step(action)
+        obs = torch.cat((obs, self.processed_context))
+        self.teacher.replay_buffer.add(self.last_obs, obs.copy(), action, reward, terminated or truncated, [])
+        self.last_obs = obs.copy()
         self.step_count += 1
-        self.update(step)
-        return step
+        self.update((obs, reward, cost, terminated, truncated, info))
+        self.step_callback()
+        return (obs, reward, cost, terminated, truncated, info)
 
     def done_callback(self, step, cur_initial_state, cur_context, discounted_reward, undiscounted_reward,
-                      use_teacher=True):
+                      discounted_cost, undiscounted_cost):
         # We currently rely on the learner being set on the environment after its creation
         self.teacher.update(self.step_count)

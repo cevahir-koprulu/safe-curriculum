@@ -1,7 +1,7 @@
 import torch
 import warnings
 import numpy as np
-from gym import spaces
+from gymnasium import spaces
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Generator, List, Optional, Union, Tuple
 

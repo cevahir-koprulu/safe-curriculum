@@ -1,7 +1,12 @@
+from typing import ClassVar, List, Dict, Any
+
 import torch
 import numpy as np
 from deep_sprl.teachers.abstract_teacher import AbstractTeacher, BaseWrapper
 
+from gymnasium import spaces
+from omnisafe.envs.core import make, env_register, support_envs
+from omnisafe.typing import DEVICE_CPU
 
 class PLR(AbstractTeacher):
 
@@ -19,6 +24,9 @@ class PLR(AbstractTeacher):
         self.rho = rho
 
         self.sample_from_buffer = None
+
+    def __str__(self) -> str:
+        return "plr"
 
     def sample_uniform(self):
         if self.is_discrete:
@@ -93,6 +101,7 @@ class PLR(AbstractTeacher):
             return self.sample_prioritized()
 
     def post_process(self, task):
+        print(f"Post processing task {task}")
         if self.sample_from_buffer:
             return self.contexts[task]
         else:
@@ -105,47 +114,89 @@ class PLR(AbstractTeacher):
         pass
 
 
+@env_register
 class PLRWrapper(BaseWrapper):
+    _support_envs: ClassVar[List[str]] = [f'PLR-{env_id}'
+                                          for env_id in support_envs() 
+                                          if "Contextual" in env_id
+                                          ]
+    need_auto_reset_wrapper = True
+    need_time_limit_wrapper = True
+    _num_envs = 1
 
-    def __init__(self, env, plr, discount_factor, context_visible, value_fn=None, lam=None):
-        BaseWrapper.__init__(self, env, plr, discount_factor, context_visible, context_post_processing=plr.post_process)
+    def __init__(self,
+                 env_id: str,
+                 num_envs: int = 1,
+                 device: torch.device = DEVICE_CPU,
+                 **kwargs):
+        super().__init__(env_id, num_envs, device, **kwargs)
+        self._env = make(env_id[len('PLR-'):])
+        self.context_dim = self.context.shape[0]
+        low_ext = np.concatenate((self._env._observation_space.low, -np.inf * np.ones(self.context_dim)))
+        high_ext = np.concatenate((self._env._observation_space.high, np.inf * np.ones(self.context_dim)))
+        self._observation_space = spaces.Box(low=low_ext, high=high_ext)
+        self._action_space = self._env.action_space
+        self._metadata = self._env.metadata
+
+    def initialize_wrapper(self, 
+                           log_dir,
+                           teacher,
+                           discount_factor,
+                           context_post_processing=None,
+                           episodes_per_update=50,
+                           save_interval=5,
+                           step_divider=1,
+                           value_fn=None,
+                           lam=None,
+                           use_undiscounted_reward=False,
+                           reward_from_info=False,
+                           cost_from_info=False,
+                           eval_mode=False,
+                           penalty_coeff_s=0.,
+                           penalty_coeff_t=0.,
+                           wait_until_policy_update=False,
+                            ):
+        super().initialize_wrapper(log_dir, teacher, discount_factor, context_post_processing, 
+                                   episodes_per_update, save_interval, step_divider, value_fn, lam,
+                                   use_undiscounted_reward, reward_from_info, cost_from_info,
+                                   eval_mode, penalty_coeff_s, penalty_coeff_t, wait_until_policy_update)
         self.state_trace = []
         self.reward_trace = []
         self.step_count = 0
-
-        self.value_fn = value_fn
-        self.lam = lam
         if self.value_fn is not None:
             self.train_state_buffer = []
             self.train_value_buffer = []
 
-    def reset(self):
-        self.cur_context = self.teacher.sample()
+    def reset(
+            self, 
+            seed: int = None,
+            options: Dict[str, Any] = None):
+        if self.cur_context is None:
+            self.cur_context = self.teacher.sample()
         if self.context_post_processing is None:
             self.processed_context = self.cur_context.copy()
         else:
-            self.processed_context = self.context_post_processing(self.cur_context).copy()
-        self.env.unwrapped.context = self.processed_context.copy()
-        obs = self.env.reset()
+            self.processed_context = self.context_post_processing(self.cur_context)
+        self._env.context = self.processed_context.copy()
+        obs, info = self._env.reset(seed=seed, options=options)
+        obs = torch.cat((obs, torch.as_tensor(self.processed_context))).float()
 
-        if self.context_visible:
-            obs = np.concatenate((obs, self.processed_context))
-
-        self.state_trace = [obs.copy()]
+        self.state_trace = [torch.clone(obs)]
         self.reward_trace = []
-        self.cur_initial_state = obs.copy()
-        return obs
+        self.cur_initial_state = torch.clone(obs)
+        return obs, info
 
     def step(self, action):
-        step = self.env.step(action)
+        obs, reward, cost, terminated, truncated, info = self._env.step(action)
+        if "final_observation" in info:
+            info["final_observation"] = torch.cat((info["final_observation"], torch.as_tensor(self.processed_context))).float()
         self.step_count += 1
-        if self.context_visible:
-            step = np.concatenate((step[0], self.processed_context)), step[1], step[2], step[3]
-        self.state_trace.append(step[0].copy())
-        self.reward_trace.append(step[1])
+        obs = torch.cat((obs, torch.as_tensor(self.processed_context))).float()
+        self.state_trace.append(torch.clone(obs))
+        self.reward_trace.append(reward)
 
         # In this case PLR trains its own value function (if e.g. using a different algorithm than PPO)
-        if step[2] and self.value_fn is not None:
+        if (terminated or truncated) and self.value_fn is not None:
             values = self.value_fn(np.array(self.state_trace))
             advantages = np.zeros((values.shape[0] - 1, 1))
             last_gae_lam = 0
@@ -161,18 +212,19 @@ class PLRWrapper(BaseWrapper):
                 self.train_state_buffer.clear()
                 self.train_value_buffer.clear()
 
-        self.update(step)
-        return step
+
+        self.update((obs, reward, cost, terminated, truncated, info))
+        self.step_callback()
+        return (obs, reward, cost, terminated, truncated, info)
 
     def done_callback(self, step, cur_initial_state, cur_context, discounted_reward, undiscounted_reward,
-                      use_teacher=True):
+                      discounted_cost, undiscounted_cost):
         # We currently rely on the learner being set on the environment after its creation
         if self.value_fn is None:
-            estimated_values = self.learner.estimate_value_internal(np.array(self.state_trace))
+            estimated_values = self.learner.estimate_value_r(np.array(self.state_trace))
         else:
             estimated_values = self.value_fn(np.array(self.state_trace))
-        self.teacher.update(cur_context, discounted_reward, estimated_values)
-
+        self.teacher.update(cur_context, discounted_reward.numpy(), estimated_values)
 
 class ValueFunction:
 

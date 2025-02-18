@@ -12,33 +12,25 @@ HAZARD_LOCATIONS = []
 HAZARD_SIZE = 0.25
 for x in range(5):
     pos_x = -0.5 + HAZARD_SIZE*x
-    # for j in range(5):
-    #     pos_y = 0. - HAZARD_SIZE*j
     for j in range(7):
         pos_y = 0.5 - HAZARD_SIZE*j
         HAZARD_LOCATIONS.append((pos_x, pos_y))
 
 PILLAR_LOCATIONS = []
 PILLAR_SIZE = 0.25
-# for j in range(3):
-#     pos_y = 0.25 - 2*PILLAR_SIZE*j
 for j in range(4):
     pos_y = 0.75 - 2*PILLAR_SIZE*j
     PILLAR_LOCATIONS.append((-.75, pos_y))
     PILLAR_LOCATIONS.append((.75, pos_y))
 
-# for j in range(8):
-#     pos_y = 1.5 - 2*PILLAR_SIZE*j
 for j in range(9):
     pos_y = 2. - 2*PILLAR_SIZE*j
     PILLAR_LOCATIONS.append((-2., pos_y))
     PILLAR_LOCATIONS.append((2., pos_y))
 for i in range(8):
     pos_x = -1.75 + 2*PILLAR_SIZE*i
-    # PILLAR_LOCATIONS.append((pos_x, 2.))
     PILLAR_LOCATIONS.append((pos_x, 2.5))
     PILLAR_LOCATIONS.append((pos_x, -2.5))
-
 
 class ContextualPassageLevel1(BaseTask):
     """
@@ -61,7 +53,6 @@ class ContextualPassageLevel1(BaseTask):
         # (0, 0) is in the middle
 
         # Agent start on the bottom left
-        # self.placements_conf.extents = np.array([-0.1, -1.7, 0.1, -1.5])
         self.placements_conf.extents = np.array([-0.1, -2.2, 0.1, -2])
 
         # Context determines the position of the goal and its size, i.e., tolerance for success

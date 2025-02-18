@@ -4,4 +4,3 @@ from .safety_goal import contextual_safety_goal_3d
 from .safety_goal import contextual_safety_goal_noconflict_3d
 from .safety_passage import contextual_safety_passage_3d
 from .safety_passage_push import contextual_safety_passage_push_3d
-from .safety_doggo import contextual_safety_doggo_3d

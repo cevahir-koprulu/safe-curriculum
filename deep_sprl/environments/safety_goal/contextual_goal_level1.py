@@ -54,7 +54,6 @@ class ContextualGoalLevel1(BaseTask):
 
         # Agent start on the bottom left
         self.placements_conf.extents = np.array([-1.3, -1.6, -1.2, -1.4])
-        # self.placements_conf.locations = [(-1.5, -1.5)]
         # Context determines the position of the goal and its size, i.e., tolerance for success
         self._add_geoms(Goal(size = self._context[2], keepout = 0, 
                              locations=[(self._context[0], self._context[1])])) 

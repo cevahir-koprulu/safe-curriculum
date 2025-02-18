@@ -10,156 +10,6 @@ from safety_gymnasium.bases.base_task import BaseTask
 from safety_gymnasium.builder import Builder
 from safety_gymnasium.utils.task_utils import get_task_class_name
 
-############# v0 #############
-# HAZARD_LOCATIONS = []
-# HAZARD_SIZE = 0.25
-# for x in range(5):
-#     pos_x = -0.5 + HAZARD_SIZE*x
-#     for j in range(7):
-#         pos_y = 0.5 - HAZARD_SIZE*j
-#         HAZARD_LOCATIONS.append((pos_x, pos_y))
-# PILLAR_LOCATIONS = []
-# PILLAR_SIZE = 0.25
-# for j in range(4):
-#     pos_y = 0.75 - 2*PILLAR_SIZE*j
-#     PILLAR_LOCATIONS.append((-.75, pos_y))
-#     PILLAR_LOCATIONS.append((.75, pos_y))
-# for j in range(11):
-#     pos_y = 2.5 - 2*PILLAR_SIZE*j
-#     PILLAR_LOCATIONS.append((-2.5, pos_y))
-#     PILLAR_LOCATIONS.append((2.5, pos_y))
-# for i in range(10):
-#     pos_x = -2.25 + 2*PILLAR_SIZE*i
-#     PILLAR_LOCATIONS.append((pos_x, 3))
-#     PILLAR_LOCATIONS.append((pos_x, -3))
-
-############# v1 #############
-# HAZARD_LOCATIONS = []
-# HAZARD_SIZE = 0.25
-# for x in range(5):
-#     pos_x = -0.5 + HAZARD_SIZE*x
-#     for j in range(9):
-#         pos_y = 0.75 - HAZARD_SIZE*j
-#         HAZARD_LOCATIONS.append((pos_x, pos_y))
-# PILLAR_LOCATIONS = []
-# PILLAR_SIZE = 0.25
-# for j in range(5):
-#     pos_y = 1 - 2*PILLAR_SIZE*j
-#     PILLAR_LOCATIONS.append((-.75, pos_y))
-#     PILLAR_LOCATIONS.append((.75, pos_y))
-# for j in range(11):
-#     pos_y = 2.5 - 2*PILLAR_SIZE*j
-#     PILLAR_LOCATIONS.append((-2.5, pos_y))
-#     PILLAR_LOCATIONS.append((2.5, pos_y))
-# for i in range(10):
-#     pos_x = -2.25 + 2*PILLAR_SIZE*i
-#     PILLAR_LOCATIONS.append((pos_x, 3))
-#     PILLAR_LOCATIONS.append((pos_x, -3))
-
-# ############# v2 #############
-# HAZARD_LOCATIONS = []
-# HAZARD_SIZE = 0.25
-# for x in range(7):
-#     pos_x = -0.75 + HAZARD_SIZE*x
-#     for j in range(9):
-#         pos_y = 0.75 - HAZARD_SIZE*j
-#         HAZARD_LOCATIONS.append((pos_x, pos_y))
-# PILLAR_LOCATIONS = []
-# PILLAR_SIZE = 0.25
-# for j in range(5):
-#     pos_y = 1 - 2*PILLAR_SIZE*j
-#     PILLAR_LOCATIONS.append((-1., pos_y))
-#     PILLAR_LOCATIONS.append((1., pos_y))
-
-# for j in range(11):
-#     pos_y = 2.5 - 2*PILLAR_SIZE*j
-#     PILLAR_LOCATIONS.append((-2.5, pos_y))
-#     PILLAR_LOCATIONS.append((2.5, pos_y))
-# for i in range(10):
-#     pos_x = -2.25 + 2*PILLAR_SIZE*i
-#     PILLAR_LOCATIONS.append((pos_x, 3))
-#     PILLAR_LOCATIONS.append((pos_x, -3))
-
-# ############# v3 #############
-# HAZARD_LOCATIONS = []
-# HAZARD_SIZE = 0.25
-# for x in range(7):
-#     pos_x = -0.75 + HAZARD_SIZE*x
-#     for j in range(9):
-#         pos_y = 0.75 - HAZARD_SIZE*j
-#         HAZARD_LOCATIONS.append((pos_x, pos_y))
-# PILLAR_LOCATIONS = []
-# PILLAR_SIZE = 0.25
-# for j in range(5):
-#     pos_y = 1. - 2*PILLAR_SIZE*j
-#     PILLAR_LOCATIONS.append((-1, pos_y))
-#     PILLAR_LOCATIONS.append((1, pos_y))
-
-# for j in range(11):
-#     pos_y = 2.5 - 2*PILLAR_SIZE*j
-#     PILLAR_LOCATIONS.append((-2.75, pos_y))
-#     PILLAR_LOCATIONS.append((2.75, pos_y))
-# for i in range(11):
-#     pos_x = -2.5 + 2*PILLAR_SIZE*i
-#     PILLAR_LOCATIONS.append((pos_x, 3))
-#     PILLAR_LOCATIONS.append((pos_x, -3))
-
-# ############# v4 #############
-# HAZARD_LOCATIONS = []
-# HAZARD_SIZE = 0.25
-# for x in range(7):
-#     pos_x = -0.75 + HAZARD_SIZE*x
-#     for j in range(11):
-#         pos_y = 1 - HAZARD_SIZE*j
-#         HAZARD_LOCATIONS.append((pos_x, pos_y))
-# PILLAR_LOCATIONS = []
-# PILLAR_SIZE = 0.25
-# for j in range(6):
-#     pos_y = 1.25 - 2*PILLAR_SIZE*j
-#     PILLAR_LOCATIONS.append((-1, pos_y))
-#     PILLAR_LOCATIONS.append((1, pos_y))
-
-# for j in range(11):
-#     pos_y = 2.5 - 2*PILLAR_SIZE*j
-#     PILLAR_LOCATIONS.append((-2.75, pos_y))
-#     PILLAR_LOCATIONS.append((2.75, pos_y))
-# for i in range(11):
-#     pos_x = -2.5 + 2*PILLAR_SIZE*i
-#     PILLAR_LOCATIONS.append((pos_x, 3))
-#     PILLAR_LOCATIONS.append((pos_x, -3))
-
-# ############# v5 #############
-# HAZARD_LOCATIONS = []
-# HAZARD_SIZE = 0.25
-# num_hazards_x = 7
-# num_hazards_y = 10 # 9
-# for x in range(num_hazards_x):
-#     pos_x = -0.75 + HAZARD_SIZE*x
-#     for j in range(num_hazards_y):
-#         pos_y = 0.75 - HAZARD_SIZE*j
-#         HAZARD_LOCATIONS.append((pos_x, pos_y))
-#         # if j == num_hazards_y - 1:
-#         #     HAZARD_LOCATIONS.append((pos_x, pos_y - HAZARD_SIZE/2)) # pos_y=
-
-# PILLAR_LOCATIONS = []
-# PILLAR_SIZE = 0.25
-# # for j in range(5):
-# #     pos_y = 1. - 2*PILLAR_SIZE*j
-# for j in range(5):
-#     pos_y = 1. - 2*PILLAR_SIZE*j - j*0.05 # 1., 0.425, -0.15, -0.725, -1.3
-#     PILLAR_LOCATIONS.append((-1.-PILLAR_SIZE/2, pos_y))
-#     PILLAR_LOCATIONS.append((1.+PILLAR_SIZE/2, pos_y))
-# \
-# for j in range(11):
-#     pos_y = 2.5 - 2*PILLAR_SIZE*j
-#     PILLAR_LOCATIONS.append((-2.75, pos_y))
-#     PILLAR_LOCATIONS.append((2.75, pos_y))
-# for i in range(11):
-#     pos_x = -2.5 + 2*PILLAR_SIZE*i
-#     PILLAR_LOCATIONS.append((pos_x, 3))
-#     PILLAR_LOCATIONS.append((pos_x, -3))
-
-############# v6 #############
 HAZARD_LOCATIONS = []
 HAZARD_SIZE = 0.25
 num_hazards_x = 4
@@ -211,19 +61,15 @@ class ContextualPassagePushLevel1(BaseTask):
         # (0, 0) is in the middle
 
         # Agent start on the bottom left
-        # self.placements_conf.extents = np.array([-0.25, -2.5, 0.25, -2.5])
         if random.random() < 0.5:
-            # self.placements_conf.extents = np.array([0.25, -2.5, 0.25, -2.5])
             self.placements_conf.extents = np.array([0.5, -2.5, 0.5, -2.1])
         else:
-            # self.placements_conf.extents = np.array([-0.25, -2.5, -0.25, -2.5])
             self.placements_conf.extents = np.array([-0.5, -2.5, -0.5, -2.1])
         # self.placements_conf.margin = 0.
         self._add_free_geoms(PushBox(null_dist=0, 
                                      size=0.125, 
                                      density=0.0005,
                                      locations=[(0., -2.125)], 
-                                    #  locations=[(0., -2.1)], 
                                      keepout=0., 
                                      ))
         # Context determines the position of the goal and its size, i.e., tolerance for success

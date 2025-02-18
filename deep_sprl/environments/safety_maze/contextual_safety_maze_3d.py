@@ -55,7 +55,7 @@ class ContextualSafetyMaze3D(CMDP):
         self._context = np.array([6., 6., 0.05]) # Top right with tolerance of 0.05
         self._viewer = Viewer(20, 20, background=(255, 255, 255))
 
-        self._single_pass_cost = 0.25 # 0.5 # 0.1
+        self._single_pass_cost = 0.25
 
     @staticmethod
     def sample_initial_state(n=None):

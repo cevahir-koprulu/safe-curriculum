@@ -5,7 +5,6 @@ from .safety_goal_3d_experiment import SafetyGoal3DExperiment
 from .safety_goal_noconflict_3d_experiment import SafetyGoalNoConflict3DExperiment
 from .safety_passage_3d_experiment import SafetyPassage3DExperiment
 from .safety_passage_push_3d_experiment import SafetyPassagePush3DExperiment
-from .safety_doggo_3d_experiment import SafetyDoggo3DExperiment
 from .abstract_experiment import CurriculumType, Learner
 
 __all__ = ['CurriculumType', 'Learner',
@@ -14,5 +13,4 @@ __all__ = ['CurriculumType', 'Learner',
            'SafetyGoalNoConflict3DExperiment',
            'SafetyPassage3DExperiment',
            'SafetyPassagePush3DExperiment',
-            'SafetyDoggo3DExperiment'
            ] 

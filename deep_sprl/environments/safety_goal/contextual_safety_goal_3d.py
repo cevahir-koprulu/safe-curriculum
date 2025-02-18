@@ -68,7 +68,7 @@ class ContextualSafetyGoal3D(CMDP):
         self._state = None
         self._timestep = 0
         self._hazard_passes = 0
-        self._single_pass_cost = 1.0 # 0.25
+        self._single_pass_cost = 1.0
 
     @staticmethod
     def sample_initial_state(contexts):

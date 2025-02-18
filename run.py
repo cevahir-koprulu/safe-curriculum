@@ -16,7 +16,7 @@ def main():
                         choices=["PPO", "SAC", "PPOLag", "CPO", "FOCOPS", "PCPO"])
     parser.add_argument("--env", type=str, default="safety_door_2d",
                         choices=["safety_maze_3d", "safety_goal_3d", "safety_goal_noconflict_3d",
-                                 "safety_passage_3d", "safety_passage_push_3d", "safety_doggo_3d"])
+                                 "safety_passage_3d", "safety_passage_push_3d"])
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--n_cores", type=int, default=1)
     parser.add_argument('--train', action='store_true')
@@ -49,9 +49,6 @@ def main():
     elif args.env == "safety_passage_push_3d":
         from deep_sprl.experiments import SafetyPassagePush3DExperiment
         exp = SafetyPassagePush3DExperiment(args.base_log_dir, args.type, args.learner, parameters, args.seed, args.device)
-    elif args.env == "safety_doggo_3d":
-        from deep_sprl.experiments import SafetyDoggo3DExperiment
-        exp = SafetyDoggo3DExperiment(args.base_log_dir, args.type, args.learner, parameters, args.seed, args.device)   
     else:
         raise RuntimeError("Unknown environment '%s'!" % args.env)
 

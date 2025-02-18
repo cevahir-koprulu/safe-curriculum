@@ -182,11 +182,6 @@ def main():
     # figname_extra = ""
 
     # num_updates_per_iteration = 5
-    # seeds = [str(i) for i in range(1, 11)]
-    # env = "safety_door_2d_narrow"
-    # figname_extra = ""
-
-    # num_updates_per_iteration = 5
     # seeds = [str(i) for i in range(1, 6)]
     # env = "safety_goal_3d"
     # figname_extra = ""
@@ -195,11 +190,6 @@ def main():
     # seeds = [str(i) for i in range(1, 6)]
     # env = "safety_goal_noconflict_3d"
     # figname_extra = "_s1-5"
-
-    # num_updates_per_iteration = 5
-    # seeds = [str(i) for i in range(1, 4)]
-    # env = "safety_goal_with_vases_3d"
-    # figname_extra = "_s1-3_newinitv3_nn256_b128"
 
     # num_updates_per_iteration = 5
     # seeds = [str(i) for i in range(1, 6)]
@@ -212,25 +202,10 @@ def main():
     # env = "safety_passage_push_3d"
     # figname_extra = "_s13456"
 
-    # num_updates_per_iteration = 5
-    # seeds = ["1", "2", "3"]
-    # env = "safety_push_3d"
-    # figname_extra = "_densev4_opengrip_10success"
-
-    # num_updates_per_iteration = 5
-    # seeds = ["1", "2", "3"]
-    # env = "safety_reach_3d"
-    # figname_extra = "_SPARSE_T=100"
-
-    # num_updates_per_iteration = 5
-    # seeds = [str(i) for i in range(1, 4)]
-    # env = "safety_ant_3d"
-    # figname_extra = "_GS=10_EPU=120_SHz"
-
     num_updates_per_iteration = 5
     seeds = [str(i) for i in range(1, 4)]
     env = "safety_doggo_3d"
-    figname_extra = "_act=tanh_SMALLv5_h3x256"
+    figname_extra = "_SCG_RCAS=15_act=relu_SMALLv5_h3x256_LOWCOST"
 
     use_mean_and_std = False
     
@@ -292,68 +267,6 @@ def main():
                 "algorithm": "self_paced",
                 "label": "SPDL",
                 "model": "PPOLag_DELTA_CS=0.0_DELTA=0.6_DIST_TYPE=gaussian_INIT_VAR=0.0_KL_EPS=0.25_PEN_COEFT=0.0",
-                "color": "cyan",
-            },
-            "GGAN": {
-                "algorithm": "goal_gan",
-                # "label": "GoalGAN",
-                "label": "GGAN",
-                "model": "PPOLag_DELTA_CS=0.0_GG_FIT_RATE=200_GG_NOISE_LEVEL=0.1_GG_P_OLD=0.2",
-                "color": "gold",
-            },
-        },
-        "safety_door_2d_narrow": {
-            "SCG": {
-                "algorithm": "constrained_wasserstein",
-                "label": "SCG",
-                "model": "PPOLag_DELTA_CS=0.0_ATP=0.75_CAS=10_DELTA=25.0_DELTA_CT=1.5_METRIC_EPS=0.5_RAS=10",
-                "color": "red",
-            },
-            "CRT": {
-                "algorithm": "wasserstein",
-                # "label": "CURROT",
-                "label": "CRT",
-                "model": "PPOLag_DELTA_CS=0.0_DELTA=25.0_METRIC_EPS=0.5_PEN_COEFT=0.0",
-                "color": "blue",
-            },
-            "NSCRT": {
-                "algorithm": "wasserstein",
-                # "label": "NaiveSafeCURROT",
-                "label": "NSCRT",
-                "model": "PPOLag_DELTA_CS=0.0_DELTA=25.0_METRIC_EPS=0.5_PEN_COEFT=1.0",
-                "color": "magenta",
-            },
-            "CRT4C": {
-                "algorithm": "wasserstein4cost",
-                # "label": "CURROT4Cost",
-                "label": "CRT4C",
-                "model": "PPOLag_DELTA_CS=0.0_DELTA_CT=1.5_METRIC_EPS=0.5",
-                "color": "lawngreen",
-            },
-            "DEF": {
-                "algorithm": "default",
-                # "label": "DEFAULT",
-                "label": "DEF",
-                "model": "PPOLag_DELTA_CS=0.0",
-                "color": "maroon",
-            },
-            "ALP": {
-                "algorithm": "alp_gmm",
-                # "label": "ALP-GMM",
-                "label": "ALP",
-                "model": "PPOLag_DELTA_CS=0.0_AG_FIT_RATE=100_AG_MAX_SIZE=500_AG_P_RAND=0.1",
-                "color": "purple",
-            },
-            "PLR": {
-                "algorithm": "plr",
-                "label": "PLR",
-                "model": "PPOLag_DELTA_CS=0.0_PLR_BETA=0.45_PLR_REPLAY_RATE=0.85_PLR_RHO=0.15",
-                "color": "darkcyan",
-            },
-            "SPDL": {
-                "algorithm": "self_paced",
-                "label": "SPDL",
-                "model": "PPOLag_DELTA_CS=0.0_DELTA=25.0_DIST_TYPE=gaussian_INIT_VAR=0.5_KL_EPS=0.25_PEN_COEFT=0.0",
                 "color": "cyan",
             },
             "GGAN": {
@@ -462,32 +375,6 @@ def main():
                 "label": "SPDL",
                 "model": "PPOLag_DELTA_CS=0.0_DELTA=0.6_DIST_TYPE=gaussian_INIT_VAR=0.0_KL_EPS=0.25_PEN_COEFT=0.0",
                 "color": "cyan",
-            },
-        },
-        "safety_goal_with_vases_3d": {
-            "SCG": {
-                "algorithm": "constrained_wasserstein",
-                "label": "SCG",
-                "model": "PPOLag_DELTA_CS=0.0_ATP=1.0_CAS=10_DELTA=0.6_DELTA_CT=1.0_METRIC_EPS=0.5_RAS=10",
-                "color": "red",
-            },
-            "CRT": {
-                "algorithm": "wasserstein",
-                "label": "CRT",
-                "model": "PPOLag_DELTA_CS=0.0_DELTA=0.6_METRIC_EPS=0.5_PEN_COEFT=0.0",
-                "color": "blue",
-            },  
-            "NSCRT": {
-                "algorithm": "wasserstein",
-                "label": "NSCRT",
-                "model": "PPOLag_DELTA_CS=0.0_DELTA=0.6_METRIC_EPS=0.5_PEN_COEFT=1.0",
-                "color": "purple",
-            },
-            "CRT4C": {
-                "algorithm": "wasserstein4cost",
-                "label": "CRT4C",
-                "model": "PPOLag_DELTA_CS=0.0_DELTA_CT=1.0_METRIC_EPS=0.5",
-                "color": "green",
             },
         },
         "safety_passage_3d": {
@@ -704,229 +591,9 @@ def main():
             #     "color": "gold",
             # },
         },
-        "safety_push_3d": {
-            "SCG": {
-                "algorithm": "constrained_wasserstein",
-                "label": "SCG",
-                "model": "PPOLag_DELTA_CS=0.0_ATP=1.0_CAS=10_DELTA=0.6_DELTA_CT=1.0_METRIC_EPS=0.1_PP=True_PS=True_RAS=10",
-                "color": "red",
-            },
-            "DEF": {
-                "algorithm": "default",
-                "label": "DEF",
-                "model": "PPOLag_DELTA_CS=0.0",
-                "color": "blue",
-            },
-            "CRT": {
-                "algorithm": "wasserstein",
-                "label": "CRT",
-                "model": "PPOLag_DELTA_CS=0.0_DELTA=0.6_METRIC_EPS=0.1_PEN_COEFT=0.0",
-                "color": "green",
-            },  
-            "NSCRT": {
-                "algorithm": "wasserstein",
-                "label": "NSCRT",
-                "model": "PPOLag_DELTA_CS=0.0_DELTA=0.6_METRIC_EPS=0.1_PEN_COEFT=1.0",
-                "color": "magenta",
-            },
-        },
-        "safety_reach_3d": {
-            "SCG": {
-                "algorithm": "constrained_wasserstein",
-                "label": "SCG",
-                "model": "PPOLag_DELTA_CS=0.0_ATP=1.0_CAS=10_DELTA=0.6_DELTA_CT=1.0_METRIC_EPS=0.1_PP=True_PS=True_RAS=10",
-                "color": "red",
-            },
-            "DEF": {
-                "algorithm": "default",
-                "label": "DEF",
-                "model": "PPOLag_DELTA_CS=0.0",
-                "color": "blue",
-            },
-            "CRT": {
-                "algorithm": "wasserstein",
-                "label": "CRT",
-                "model": "PPOLag_DELTA_CS=0.0_DELTA=0.6_METRIC_EPS=0.1_PEN_COEFT=0.0",
-                "color": "green",
-            },  
-            "NSCRT": {
-                "algorithm": "wasserstein",
-                "label": "NSCRT",
-                "model": "PPOLag_DELTA_CS=0.0_DELTA=0.6_METRIC_EPS=0.1_PEN_COEFT=1.0",
-                "color": "magenta",
-            },
-        },
-        "safety_ant_3d": {
-            "SCG": {
-                "algorithm": "constrained_wasserstein",
-                "label": "SCG",
-                "model": "PPOLag_DELTA_CS=0.0_ATP=0.75_CAS=10_DELTA=0.6_DELTA_CT=1.0_METRIC_EPS=0.25_PP=True_PS=True_RAS=10",
-                "color": "blue",
-            },
-            "NSCURROT": {
-                "algorithm": "wasserstein",
-                "label": "NSCURROT",
-                "model": "PPOLag_DELTA_CS=0.0_DELTA=0.6_METRIC_EPS=0.25_PEN_COEFT=1.0",
-                "color": "red",
-            },
-            "CURROT": {
-                "algorithm": "wasserstein",
-                "label": "CURROT",
-                "model": "PPOLag_DELTA_CS=0.0_DELTA=0.6_METRIC_EPS=0.25_PEN_COEFT=0.0",
-                "color": "green",
-            },     
-            "DEFAULT": {
-                "algorithm": "default",
-                "label": "DEFAULT",
-                "model": "PPOLag_DELTA_CS=0.0",
-                "color": "purple",
-            },
-        },
-        "safety_doggo_3d": {
-            "SCG_D=0.7": {
-                "algorithm": "constrained_wasserstein",
-                "label": "SCG_D=0.7",
-                "model": "PPOLag_DELTA_CS=0.0_ATP=0.75_CAS=10_DELTA=0.7_DELTA_CT=1.0_METRIC_EPS=0.25_PP=True_PS=True_RAS=10",
-                "color": "red",
-            },
-            # "D=0.6": {
-            #     "algorithm": "constrained_wasserstein",
-            #     "label": "D=0.6",
-            #     "model": "PPOLag_DELTA_CS=0.0_ATP=0.75_CAS=10_DELTA=0.6_DELTA_CT=1.0_METRIC_EPS=0.25_PP=True_PS=True_RAS=10",
-            #     "color": "red",
-            # },
-            # "D=0.7": {
-            #     "algorithm": "constrained_wasserstein",
-            #     "label": "D=0.7",
-            #     "model": "PPOLag_DELTA_CS=0.0_ATP=0.75_CAS=10_DELTA=0.7_DELTA_CT=1.0_METRIC_EPS=0.25_PP=True_PS=True_RAS=10",
-            #     "color": "blue",
-            # },
-            # "D=0.7_MEPS=0.1": {
-            #     "algorithm": "constrained_wasserstein",
-            #     "label": "D=0.7_MEPS=0.1",
-            #     "model": "PPOLag_DELTA_CS=0.0_ATP=0.75_CAS=10_DELTA=0.7_DELTA_CT=1.0_METRIC_EPS=0.1_PP=True_PS=True_RAS=10",
-            #     "color": "green",
-            # },
-            # "D=0.8": {
-            #     "algorithm": "constrained_wasserstein",
-            #     "label": "D=0.8",
-            #     "model": "PPOLag_DELTA_CS=0.0_ATP=0.75_CAS=10_DELTA=0.8_DELTA_CT=1.0_METRIC_EPS=0.25_PP=True_PS=True_RAS=10",
-            #     "color": "magenta",
-            # },
-            # "ATP=0.75_DCT=1_D=0.6": {
-            #     "algorithm": "constrained_wasserstein",
-            #     "label": "ATP=0.75_DCT=1_D=0.6",
-            #     "model": "PPOLag_DELTA_CS=0.0_ATP=0.75_CAS=10_DELTA=0.6_DELTA_CT=1.0_METRIC_EPS=0.25_PP=True_PS=True_RAS=10",
-            #     "color": "red",
-            # },
-            # "ATP=0.75_DCT=1_D=0.7": {
-            #     "algorithm": "constrained_wasserstein",
-            #     "label": "ATP=0.75_DCT=1_D=0.7",
-            #     "model": "PPOLag_DELTA_CS=0.0_ATP=0.75_CAS=10_DELTA=0.7_DELTA_CT=1.0_METRIC_EPS=0.25_PP=True_PS=True_RAS=10",
-            #     "color": "blue",
-            # },
-            # "ATP=0.75_DCT=0.5_D=0.6": {
-            #     "algorithm": "constrained_wasserstein",
-            #     "label": "ATP=0.75_DCT=0.5_D=0.6",
-            #     "model": "PPOLag_DELTA_CS=0.0_ATP=0.75_CAS=10_DELTA=0.6_DELTA_CT=0.5_METRIC_EPS=0.25_PP=True_PS=True_RAS=10",
-            #     "color": "green",
-            # },
-            # "ATP=0.75_DCT=2_D=0.6": {
-            #     "algorithm": "constrained_wasserstein",
-            #     "label": "ATP=0.75_DCT=2_D=0.6",
-            #     "model": "PPOLag_DELTA_CS=0.0_ATP=0.75_CAS=10_DELTA=0.6_DELTA_CT=2.0_METRIC_EPS=0.25_PP=True_PS=True_RAS=10",
-            #     "color": "magenta",
-            # },
-            # "ATP=1_DCT=1_D=0.6": {
-            #     "algorithm": "constrained_wasserstein",
-            #     "label": "ATP=1_DCT=1_D=0.6",
-            #     "model": "PPOLag_DELTA_CS=0.0_ATP=1.0_CAS=10_DELTA=0.6_DELTA_CT=1.0_METRIC_EPS=0.25_PP=True_PS=True_RAS=10",
-            #     "color": "cyan",
-            # },
-            # "D=0.6": {
-            #     "algorithm": "wasserstein",
-            #     "label": "NSCURROT",
-            #     "model": "PPOLag_DELTA_CS=0.0_DELTA=0.6_METRIC_EPS=0.25_PEN_COEFT=1.0",
-            #     "color": "red",
-            # },
-            # "D=0.7": {
-            #     "algorithm": "wasserstein",
-            #     "label": "D=0.7",
-            #     "model": "PPOLag_DELTA_CS=0.0_DELTA=0.7_METRIC_EPS=0.25_PEN_COEFT=1.0",
-            #     "color": "blue",
-            # },
-            # "D=0.5": {
-            #     "algorithm": "wasserstein",
-            #     "label": "D=0.5",
-            #     "model": "PPOLag_DELTA_CS=0.0_DELTA=0.5_METRIC_EPS=0.25_PEN_COEFT=1.0",
-            #     "color": "green",
-            # },
-            # "SCG": {
-            #     "algorithm": "constrained_wasserstein",
-            #     "label": "SCG",
-            #     "model": "PPOLag_DELTA_CS=0.0_ATP=0.75_CAS=10_DELTA=0.6_DELTA_CT=1.0_METRIC_EPS=0.25_PP=True_PS=True_RAS=10",
-            #     "color": "blue",
-            # },
-            "CURROT": {
-                "algorithm": "wasserstein",
-                "label": "CURROT",
-                "model": "PPOLag_DELTA_CS=0.0_DELTA=0.6_METRIC_EPS=0.25_PEN_COEFT=0.0",
-                "color": "blue",
-            },  
-            "NSCURROT": {
-                "algorithm": "wasserstein",
-                "label": "NSCURROT",
-                "model": "PPOLag_DELTA_CS=0.0_DELTA=0.6_METRIC_EPS=0.25_PEN_COEFT=1.0",
-                "color": "magenta",
-            },
-            "DEFAULT": {
-                "algorithm": "default",
-                "label": "DEFAULT",
-                "model": "PPOLag_DELTA_CS=0.0",
-                "color": "brown",
-            },
-        },
     }
 
     settings = {
-        "safety_door_2d_narrow":{
-            "cost_threshold": 0.0,
-            "num_iters": 500,
-            "steps_per_iter": 4000,
-            "fontsize": 22,
-            "figsize": (10, 4),
-            "bbox_to_anchor": (.5, 1.15),
-            "plot_settings": {
-                "return": {
-                    "ylabel": 'Cumulative Reward',
-                    "ylim": {
-                        'eval': [-5., 70.],
-                        'training': [-5., 70.],
-                    }
-                },
-                "cost": {
-                    "ylabel": 'Cumulative Cost',
-                    "ylim": {
-                        'eval': [-5.0, 30.],
-                        'training': [-5.0, 20.],
-                    }
-                },
-                "regret": {
-                    "ylabel": 'Constraint Violation Regret',
-                    "ylim": {
-                        'eval': [-5.0, 1000.],
-                        'training': [-5.0, 200.],
-                    }
-                },
-                "success": {
-                    "ylabel": 'Success Rate',
-                    "ylim": {
-                        'eval': [-0.1, 1.1],
-                        'training': [-0.1, 1.1],
-                    }
-                },
-            },
-        },
         "safety_maze_3d":{
             "cost_threshold": 0.,
             "num_iters": 500,
@@ -992,44 +659,6 @@ def main():
                     "ylim": {
                         'eval': [0., 50.],
                         'training': [0., 50.],
-                    }
-                },
-                "success": {
-                    "ylabel": 'Success Rate',
-                    'ylim': {
-                        'eval': [-0.1, 1.1],
-                        'training': [-0.1, 1.1],
-                    }
-                },
-            },
-        },
-        "safety_goal_noconflict_3d":{
-            "cost_threshold": 0.,
-            "num_iters": 150,
-            "steps_per_iter": 10000,
-            "fontsize": 22,
-            "figsize": (10, 4),
-            "bbox_to_anchor": (.5, 1.15),
-            "plot_settings": {
-                "return": {
-                    "ylabel": 'Cumulative Reward',
-                    "ylim": {
-                        'eval': [0., 2.],
-                        'training': [0., 2.],
-                    }
-                },
-                "cost": {
-                    "ylabel": 'Cumulative Cost',
-                    "ylim": {
-                        'eval': [-0.5, 3.],
-                        'training': [-0.1, 1.],
-                    }
-                },
-                "regret": {
-                    "ylabel": 'Constraint Violation Regret',
-                    "ylim": {
-                        'eval': [0., 25.],
-                        'training': [0., 3.],
                     }
                 },
                 "success": {
@@ -1117,158 +746,6 @@ def main():
                 },
             },
         },       
-        "safety_push_3d":{
-            "cost_threshold": 0.,
-            "num_iters": 150,
-            "steps_per_iter": 10000,
-            "fontsize": 22,
-            "figsize": (10, 4),
-            "bbox_to_anchor": (.5, 1.15),
-            "plot_settings": {
-                "return": {
-                    "ylabel": 'Cumulative Reward',
-                    "ylim": {
-                        'eval': [0., 1.25],
-                        'training': [0., 1.],
-                    }
-                },
-                "cost": {
-                    "ylabel": 'Cumulative Cost',
-                    "ylim": {
-                        'eval': [-0.5, 10.],
-                        'training': [-0.5, 10.],
-                    }
-                },
-                "regret": {
-                    "ylabel": 'Constraint Violation Regret',
-                    "ylim": {
-                        'eval': [0., 75.],
-                        'training': [0., 10.],
-                    }
-                },
-                "success": {
-                    "ylabel": 'Success Rate',
-                    'ylim': {
-                        'eval': [-0.1, 1.1],
-                        'training': [-0.1, 1.1],
-                    }
-                },
-            },
-        },      
-        "safety_reach_3d":{
-            "cost_threshold": 0.,
-            "num_iters": 200,
-            "steps_per_iter": 5000,
-            "fontsize": 22,
-            "figsize": (10, 4),
-            "bbox_to_anchor": (.5, 1.15),
-            "plot_settings": {
-                "return": {
-                    "ylabel": 'Cumulative Reward',
-                    "ylim": {
-                        'eval': [0., 1.25],
-                        'training': [0., 1.],
-                    }
-                },
-                "cost": {
-                    "ylabel": 'Cumulative Cost',
-                    "ylim": {
-                        'eval': [-0.5, 10.],
-                        'training': [-0.5, 10.],
-                    }
-                },
-                "regret": {
-                    "ylabel": 'Constraint Violation Regret',
-                    "ylim": {
-                        'eval': [0., 75.],
-                        'training': [0., 20.],
-                    }
-                },
-                "success": {
-                    "ylabel": 'Success Rate',
-                    'ylim': {
-                        'eval': [-0.1, 1.1],
-                        'training': [-0.1, 1.1],
-                    }
-                },
-            },
-        },      
-        "safety_ant_3d":{
-            "cost_threshold": 0.,
-            "num_iters": 100,
-            "steps_per_iter": 2500,
-            "fontsize": 22,
-            "figsize": (10, 4),
-            "bbox_to_anchor": (.5, 1.15),
-            "plot_settings": {
-                "return": {
-                    "ylabel": 'Cumulative Reward',
-                    "ylim": {
-                        'eval': [0., 1.],
-                        'training': [0., 1.],
-                    }
-                },
-                "cost": {
-                    "ylabel": 'Cumulative Cost',
-                    "ylim": {
-                        'eval': [-0.5, 10.],
-                        'training': [-0.5, 10.],
-                    }
-                },
-                "regret": {
-                    "ylabel": 'Constraint Violation Regret',
-                    "ylim": {
-                        'eval': [0., 50.],
-                        'training': [0., 50.],
-                    }
-                },
-                "success": {
-                    "ylabel": 'Success Rate',
-                    'ylim': {
-                        'eval': [-0.1, 1.1],
-                        'training': [-0.1, 1.1],
-                    }
-                },
-            },
-        },
-        "safety_doggo_3d":{
-            "cost_threshold": 0.,
-            "num_iters": 100,
-            "steps_per_iter": 20000,
-            "fontsize": 22,
-            "figsize": (10, 4),
-            "bbox_to_anchor": (.5, 1.15),
-            "plot_settings": {
-                "return": {
-                    "ylabel": 'Cumulative Reward',
-                    "ylim": {
-                        'eval': [0., 1.],
-                        'training': [0., 1.],
-                    }
-                },
-                "cost": {
-                    "ylabel": 'Cumulative Cost',
-                    "ylim": {
-                        'eval': [-0.5, 10.],
-                        'training': [-0.5, 10.],
-                    }
-                },
-                "regret": {
-                    "ylabel": 'Constraint Violation Regret',
-                    "ylim": {
-                        'eval': [0., 50.],
-                        'training': [0., 50.],
-                    }
-                },
-                "success": {
-                    "ylabel": 'Success Rate',
-                    'ylim': {
-                        'eval': [-0.1, 1.1],
-                        'training': [-0.1, 1.1],
-                    }
-                },
-            },
-        },    
     }
 
     if not os.path.exists(os.path.join(Path(os.getcwd()).parent, "figures")):
